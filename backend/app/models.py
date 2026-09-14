@@ -196,3 +196,30 @@ class AppSetting(Base):
 
     key: Mapped[str] = mapped_column(String(64), primary_key=True)
     value: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+class NewsItem(Base):
+    """대시보드 자동 스크롤 게시판에 표시되는 안전보건 뉴스 한 건.
+
+    고용노동부/안전보건공단 안전보건 이슈, 중대재해 뉴스 세 카테고리(category:
+    "moel" | "kosha" | "accident")로 나뉘며, 각각 설정에서 지정한 RSS/Atom
+    피드 주소를 주기적으로 읽어와 채워진다(news_service.sync_news 참고).
+    같은 카테고리 안에서 guid(피드의 고유 식별자, 보통 원문 링크)가 같으면
+    중복 저장하지 않는다."""
+
+    __tablename__ = "news_items"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    category: Mapped[str] = mapped_column(String(16))  # "moel" | "kosha" | "accident"
+    source_name: Mapped[str] = mapped_column(String(64))
+    title: Mapped[str] = mapped_column(String(512))
+    link: Mapped[str] = mapped_column(String(1024))
+    guid: Mapped[str] = mapped_column(String(512))
+    published_at: Mapped[datetime.datetime | None] = mapped_column(DateTime, nullable=True)
+    fetched_at: Mapped[datetime.datetime] = mapped_column(DateTime, default=now)
+    # 실제 피드를 못 가져왔을 때(네트워크 차단 등) 화면이 비어 보이지 않도록
+    # 채워 넣는 예시 데이터인지 여부. 실제 데이터가 들어오기 시작하면 같은
+    # 카테고리의 예시 항목은 정리된다.
+    is_demo: Mapped[bool] = mapped_column(Boolean, default=False)
+
+    __table_args__ = (UniqueConstraint("category", "guid", name="uq_news_category_guid"),)

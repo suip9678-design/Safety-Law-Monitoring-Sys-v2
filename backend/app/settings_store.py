@@ -24,6 +24,11 @@ _KEYS = [
     "new_admrul_department",
     "new_admrul_since_date",
     "full_law_cache_enabled",
+    "news_ticker_enabled",
+    "news_source_moel_url",
+    "news_source_kosha_url",
+    "news_source_accident_url",
+    "news_max_items_per_category",
 ]
 
 _ENV_DEFAULTS = {
@@ -39,6 +44,11 @@ _ENV_DEFAULTS = {
     "new_admrul_department": env_settings.NEW_ADMRUL_DEPARTMENT,
     "new_admrul_since_date": env_settings.NEW_ADMRUL_SINCE_DATE,
     "full_law_cache_enabled": "true" if env_settings.FULL_LAW_CACHE_ENABLED else "false",
+    "news_ticker_enabled": "true" if env_settings.NEWS_TICKER_ENABLED else "false",
+    "news_source_moel_url": env_settings.NEWS_SOURCE_MOEL_URL,
+    "news_source_kosha_url": env_settings.NEWS_SOURCE_KOSHA_URL,
+    "news_source_accident_url": env_settings.NEWS_SOURCE_ACCIDENT_URL,
+    "news_max_items_per_category": str(env_settings.NEWS_MAX_ITEMS_PER_CATEGORY),
 }
 
 

@@ -10,7 +10,7 @@ from . import models
 from .auth import BasicAuthMiddleware
 from .config import settings
 from .database import SessionLocal, engine, ensure_columns
-from .routers import content_cache, dashboard, documents, laws, mappings, revisions, settings as settings_router, sync
+from .routers import content_cache, dashboard, documents, laws, mappings, news, revisions, settings as settings_router, sync
 
 logger = logging.getLogger("safety_law_tracker")
 
@@ -36,6 +36,7 @@ app.include_router(sync.router)
 app.include_router(settings_router.router)
 app.include_router(dashboard.router)
 app.include_router(content_cache.router)
+app.include_router(news.router)
 
 _scheduler: BackgroundScheduler | None = None
 
@@ -84,6 +85,23 @@ def _scheduled_sync():
         if errors:
             logger.warning("자동 동기화 중 오류: %s", errors)
         logger.info("자동 동기화 완료: 신규 개정 %d건", len(new_revisions))
+    finally:
+        db.close()
+
+
+def _scheduled_news_sync():
+    from . import news_service, settings_store
+
+    db = SessionLocal()
+    try:
+        values = settings_store.get_all(db)
+        if values.get("news_ticker_enabled", "true").strip().lower() not in ("1", "true", "yes", "on"):
+            return
+        max_items = int(values.get("news_max_items_per_category") or settings.NEWS_MAX_ITEMS_PER_CATEGORY)
+        added = news_service.sync_news(db, news_service.configured_sources(db), max_items)
+        logger.info("안전보건 뉴스 게시판 동기화 완료: 신규 %d건", added)
+    except Exception:  # noqa: BLE001 - 뉴스 게시판 갱신 실패가 다른 스케줄 작업을 막으면 안 됨
+        logger.exception("안전보건 뉴스 게시판 동기화 중 오류")
     finally:
         db.close()
 
@@ -138,6 +156,17 @@ def on_startup():
             next_run_time=None,
         )
         logger.info("자동 동기화 스케줄러 등록 (%d시간 주기)", settings.AUTO_SYNC_INTERVAL_HOURS)
+    if settings.NEWS_FETCH_INTERVAL_HOURS > 0:
+        # 서버를 켤 때마다 20초 뒤에 한 번 바로 실행해, 최초 실행 시에도
+        # 몇 시간을 기다리지 않고 대시보드 게시판이 곧바로 채워지게 한다.
+        _scheduler.add_job(
+            _scheduled_news_sync,
+            "interval",
+            hours=settings.NEWS_FETCH_INTERVAL_HOURS,
+            id="news_sync",
+            next_run_time=datetime.datetime.now(_KST) + datetime.timedelta(seconds=20),
+        )
+        logger.info("안전보건 뉴스 게시판 자동 수집 스케줄러 등록 (%d시간 주기)", settings.NEWS_FETCH_INTERVAL_HOURS)
     # 신규 제정 고시 탐지 + (설정에서 켠 경우) 전체 법령 자동 캐시를 매일
     # 새벽 1시(KST)에 함께 실행한다. 전체 법령 자동 캐시는 매번 켜져
     # 있는지만 여기서 확인하므로, 서버 재시작 없이 설정 화면에서 껐다

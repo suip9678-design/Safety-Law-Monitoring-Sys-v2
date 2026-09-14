@@ -73,5 +73,28 @@ class Settings:
 
     FRONTEND_DIR: Path = BASE_DIR.parent / "frontend"
 
+    # 대시보드 안전보건 뉴스 자동 스크롤 게시판. 고용노동부/안전보건공단
+    # 공식 사이트는 이 프로젝트를 만드는 개발 환경에서 네트워크 접근이
+    # 막혀 있어 공식 RSS 주소를 검증하지 못했다(law_api.py의 국가법령정보센터
+    # API와 같은 사정) - 기본값은 별도 승인 없이 어떤 네트워크에서도
+    # 동작하는 구글 뉴스 RSS 검색으로 채워두었고, 소관부처의 공식 RSS
+    # 주소를 확인하면 설정 탭에서 그 주소로 교체하면 된다(표준 RSS/Atom
+    # 형식이면 어떤 URL이든 동작).
+    NEWS_TICKER_ENABLED: bool = _bool(os.getenv("NEWS_TICKER_ENABLED"), True)
+    NEWS_FETCH_INTERVAL_HOURS: int = int(os.getenv("NEWS_FETCH_INTERVAL_HOURS", "3") or "0")
+    NEWS_MAX_ITEMS_PER_CATEGORY: int = int(os.getenv("NEWS_MAX_ITEMS_PER_CATEGORY", "30") or "30")
+    NEWS_SOURCE_MOEL_URL: str = os.getenv(
+        "NEWS_SOURCE_MOEL_URL",
+        "https://news.google.com/rss/search?q=%EA%B3%A0%EC%9A%A9%EB%85%B8%EB%8F%99%EB%B6%80%20%EC%95%88%EC%A0%84%EB%B3%B4%EA%B1%B4&hl=ko&gl=KR&ceid=KR:ko",
+    ).strip()
+    NEWS_SOURCE_KOSHA_URL: str = os.getenv(
+        "NEWS_SOURCE_KOSHA_URL",
+        "https://news.google.com/rss/search?q=%EC%95%88%EC%A0%84%EB%B3%B4%EA%B1%B4%EA%B3%B5%EB%8B%A8&hl=ko&gl=KR&ceid=KR:ko",
+    ).strip()
+    NEWS_SOURCE_ACCIDENT_URL: str = os.getenv(
+        "NEWS_SOURCE_ACCIDENT_URL",
+        "https://news.google.com/rss/search?q=%EC%A4%91%EB%8C%80%EC%9E%AC%ED%95%B4&hl=ko&gl=KR&ceid=KR:ko",
+    ).strip()
+
 
 settings = Settings()

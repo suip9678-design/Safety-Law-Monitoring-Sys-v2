@@ -1,8 +1,13 @@
-# 안전보건 법령·고시 개정 추적 시스템
+# 안전보건 법령·고시 개정 추적 시스템 v2
 
 회사가 보유한 안전보건 절차서/지침서/작업표준의 근거가 되는 대한민국 법령(법률·시행령·시행규칙)과
 행정규칙(고시·예규·훈령)의 개정 여부를 자동으로 추적하고, 어떤 회사 문서가 영향을 받는지 한눈에
 파악할 수 있는 웹 대시보드입니다.
+
+> **v2 안내**: 이 저장소는 기존 `Safety-Law-Monitoring-Sys` 저장소(법령·고시 개정 추적 핵심/확장
+> 기능 전체)를 그대로 옮긴 뒤, **대시보드 안전보건 뉴스 자동 스크롤 게시판** 기능을 새로 추가한
+> 버전입니다. 기존 저장소는 그대로 보존되며, 이후 개발은 이 v2 저장소를 기준으로 이어갑니다.
+> 새로 추가된 기능은 아래 "0. 안전보건 뉴스 자동 스크롤 게시판" 항목을 참고하세요.
 
 ## 왜 필요한가
 
@@ -28,6 +33,10 @@
 **"사내 절차서·지침서 개정 필요 사항"**(확장 - 문서와 매핑된 법령의 개정만 추려서 보여줌) 두 영역으로
 나뉘어 있습니다.
 
+0. **안전보건 뉴스 자동 스크롤 게시판 (v2 신규)**: 고용노동부·안전보건공단 안전보건 이슈, 중대재해
+   관련 뉴스를 대시보드 상단에 게시판처럼 자동으로 스크롤해서 보여줍니다. RSS/Atom 피드를 주기적으로
+   읽어와 채우며, 항목을 클릭하면 원문으로 이동합니다. 자세한 내용은 아래
+   "안전보건 뉴스 자동 스크롤 게시판" 절 참고.
 1. **법령 마스터 관리**: 법령명으로 검색해 추적 목록에 등록/제거 (핵심)
 2. **자동 개정 감지**: "새로고침" 버튼 또는 자동 스케줄러/크론으로 공포일자·시행일자 변경 감지 (핵심)
 3. **개정 이력 관리**: 감지된 개정 건을 미검토 → 검토중 → 반영완료 상태로 추적 (핵심)
@@ -133,6 +142,26 @@ Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 0 8 * * * cd /path/to/test-trans/backend && /path/to/.venv/bin/python ../scripts/sync_cli.py >> sync.log 2>&1
 ```
 
+## 안전보건 뉴스 자동 스크롤 게시판 (v2 신규)
+
+대시보드 상단(요약 카드 바로 아래)에 고용노동부/안전보건공단 안전보건 이슈, 중대재해 관련 뉴스를
+게시판처럼 자동으로 스크롤해서 보여줍니다.
+
+- 3개 카테고리(고용노동부/안전보건공단/중대재해 뉴스)별로 RSS 또는 Atom 피드 주소를 설정 탭
+  **"안전보건 뉴스 게시판"**에서 지정하면, 서버가 주기적으로(기본 3시간, `.env`의
+  `NEWS_FETCH_INTERVAL_HOURS`) 읽어와 새 항목만 저장합니다. "지금 새로고침" 버튼으로 즉시 가져올
+  수도 있습니다.
+- **기본 피드 주소는 구글 뉴스 검색 RSS(`news.google.com/rss/search`)로 채워져 있습니다.** 이
+  프로젝트를 만드는 환경에서는 `moel.go.kr`/`kosha.or.kr`에 대한 네트워크 접근이 막혀 있어(국가법령정보센터와
+  같은 사정, 아래 절 참고) 두 기관의 공식 RSS 주소를 실제로 검증하지 못했습니다. 공식 RSS 주소를
+  확인하면 설정 탭에서 그 주소로 바꿔 끼우세요 (표준 RSS 2.0 또는 Atom 형식이면 어떤 URL이든 동작).
+- 피드를 아직 못 가져왔거나(네트워크 차단, 주소 미설정 등) 새로 배포한 직후라 게시판이 비어 보이지
+  않도록, 그동안은 예시(데모) 데이터로 채워지고 대시보드에 **"예시 데이터"** 배지가 함께 표시됩니다.
+  실제 데이터가 들어오기 시작하면 예시 항목은 자동으로 정리됩니다.
+- 상단 필터(전체/고용노동부/안전보건공단/중대재해 뉴스)로 좁혀볼 수 있고, 항목을 클릭하면 새 탭으로
+  원문이 열립니다. 마우스를 올리면 자동 스크롤이 멈춥니다.
+- 설정 탭에서 게시판 표시 여부, 카테고리별 최대 보관 건수도 함께 조절할 수 있습니다.
+
 ## 프로젝트 구조
 
 ```
@@ -141,14 +170,15 @@ backend/
     main.py            FastAPI 앱, 정적 프론트엔드 서빙, 자동 동기화 스케줄러
     config.py           .env 로드
     database.py          SQLAlchemy 엔진/세션
-    models.py            TrackedLaw / LawRevision / CompanyDocument / DocumentLawMapping / AppSetting
+    models.py            TrackedLaw / LawRevision / CompanyDocument / DocumentLawMapping / NewsItem / AppSetting
     schemas.py           Pydantic 스키마
     law_api.py           국가법령정보센터 Open API 클라이언트 (+ 데모 클라이언트)
-    fixtures.py           데모 모드용 샘플 데이터
+    news_service.py       안전보건 뉴스 RSS/Atom 피드 수집 (v2 신규)
+    fixtures.py           데모 모드/뉴스 게시판용 예시 데이터
     sync_service.py       법령 상세 조회 후 변경 감지 → LawRevision 생성
     email_service.py      SMTP 알림 메일 발송
     settings_store.py     DB에 저장되는 런타임 설정 (.env를 기본값으로 사용)
-    routers/               API 라우터 (laws, revisions, documents, mappings, sync, settings, dashboard)
+    routers/               API 라우터 (laws, revisions, documents, mappings, sync, settings, dashboard, news)
 frontend/
   index.html / style.css / app.js   대시보드 UI (빌드 불필요)
 scripts/

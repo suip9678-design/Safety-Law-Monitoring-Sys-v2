@@ -38,6 +38,11 @@ def get_settings(db: Session = Depends(get_db)):
         new_admrul_since_date=values.get("new_admrul_since_date") or None,
         full_law_cache_enabled=str(values.get("full_law_cache_enabled", "false")).lower() in ("1", "true", "yes", "on"),
         email_feature_enabled=env_settings.FEATURE_EMAIL_ENABLED,
+        news_ticker_enabled=str(values.get("news_ticker_enabled", "true")).lower() in ("1", "true", "yes", "on"),
+        news_source_moel_url=values.get("news_source_moel_url") or None,
+        news_source_kosha_url=values.get("news_source_kosha_url") or None,
+        news_source_accident_url=values.get("news_source_accident_url") or None,
+        news_max_items_per_category=int(values.get("news_max_items_per_category") or 30),
     )
 
 
@@ -68,6 +73,16 @@ def update_settings(payload: schemas.SettingsUpdate, db: Session = Depends(get_d
         updates["new_admrul_since_date"] = payload.new_admrul_since_date
     if payload.full_law_cache_enabled is not None:
         updates["full_law_cache_enabled"] = "true" if payload.full_law_cache_enabled else "false"
+    if payload.news_ticker_enabled is not None:
+        updates["news_ticker_enabled"] = "true" if payload.news_ticker_enabled else "false"
+    if payload.news_source_moel_url is not None:
+        updates["news_source_moel_url"] = payload.news_source_moel_url
+    if payload.news_source_kosha_url is not None:
+        updates["news_source_kosha_url"] = payload.news_source_kosha_url
+    if payload.news_source_accident_url is not None:
+        updates["news_source_accident_url"] = payload.news_source_accident_url
+    if payload.news_max_items_per_category is not None:
+        updates["news_max_items_per_category"] = str(payload.news_max_items_per_category)
 
     settings_store.set_values(db, updates)
     return get_settings(db)

@@ -613,3 +613,93 @@ tr.law-row-alert td:first-child { border-left: 3px solid var(--danger); }
 
 .link-btn:hover { text-decoration: underline; }
 
+/* ---------- 안전보건 뉴스 게시판 ---------- */
+
+.news-board-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.news-board-header h2 { margin: 0; }
+
+.news-board-filters { margin-bottom: 10px; }
+
+.news-filter-btn {
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 12.5px;
+  font-family: var(--font-sans);
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 0.12s ease, color 0.12s ease, background-color 0.12s ease;
+}
+
+.news-filter-btn:hover { border-color: var(--primary); color: var(--primary); }
+
+.news-filter-btn.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+
+.news-board-viewport {
+  height: 220px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+
+.news-board-track { display: flex; flex-direction: column; }
+
+.news-board-item {
+  display: grid;
+  grid-template-columns: 92px 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border-muted);
+  text-decoration: none;
+  color: var(--text);
+  font-size: 13px;
+}
+
+.news-board-item:last-child { border-bottom: none; }
+.news-board-item:hover { background: var(--surface-muted); }
+
+.news-board-source {
+  display: inline-block;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  text-align: center;
+  background: var(--warn-bg);
+  color: var(--warn-text);
+}
+
+.news-board-source.news-src-moel { background: var(--primary-subtle); color: var(--primary-dark); }
+.news-board-source.news-src-kosha { background: var(--ok-bg); color: var(--ok-text); }
+.news-board-source.news-src-accident { background: var(--pending-bg); color: var(--pending-text); }
+
+.news-board-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+}
+
+.news-board-date {
+  color: var(--text-subtle);
+  font-size: 11.5px;
+  white-space: nowrap;
+}
+
+.news-board-empty { padding: 28px; text-align: center; color: var(--text-muted); font-size: 13px; }
+

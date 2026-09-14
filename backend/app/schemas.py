@@ -184,6 +184,11 @@ class SettingsOut(BaseModel):
     new_admrul_since_date: str | None = None
     full_law_cache_enabled: bool = False
     email_feature_enabled: bool = True
+    news_ticker_enabled: bool = True
+    news_source_moel_url: str | None = None
+    news_source_kosha_url: str | None = None
+    news_source_accident_url: str | None = None
+    news_max_items_per_category: int = 30
 
 
 class SettingsUpdate(BaseModel):
@@ -199,6 +204,11 @@ class SettingsUpdate(BaseModel):
     new_admrul_department: str | None = None
     new_admrul_since_date: str | None = None
     full_law_cache_enabled: bool | None = None
+    news_ticker_enabled: bool | None = None
+    news_source_moel_url: str | None = None
+    news_source_kosha_url: str | None = None
+    news_source_accident_url: str | None = None
+    news_max_items_per_category: int | None = None
 
 
 class SyncResult(BaseModel):
@@ -224,6 +234,19 @@ class NewAdmrulCandidateOut(BaseModel):
     detail_link: str | None = None
     matched_keyword: str | None = None
     first_seen_at: UtcDateTime
+
+
+class NewsItemOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    category: str
+    source_name: str
+    title: str
+    link: str
+    published_at: UtcDateTimeOpt = None
+    fetched_at: UtcDateTime
+    is_demo: bool = False
 
 
 class DocumentImpactOut(BaseModel):

@@ -153,3 +153,67 @@ def get_detail(source_type: str, external_id: str) -> dict | None:
         if law["source_type"] == source_type and law["external_id"] == external_id:
             return law
     return None
+
+
+# 뉴스 게시판용 예시 데이터. 실제 RSS 피드를 가져오지 못했을 때(네트워크
+# 차단, 아직 설정 안 함 등) 화면이 텅 비어 보이지 않도록 채워 넣는 용도라,
+# DEMO_LAWS와 달리 LAW_API_OC 설정과는 무관하게 카테고리별 피드 호출이
+# 빈 목록을 돌려줄 때마다 쓰인다(news_service.sync_news 참고). guid를
+# 고정해두어 반복 동기화해도 중복 저장되지 않는다.
+DEMO_NEWS: dict[str, list[dict]] = {
+    "moel": [
+        {
+            "title": "[예시] 고용노동부, 중대재해 예방을 위한 산업안전보건 감독 강화 계획 발표",
+            "link": "https://www.moel.go.kr",
+            "guid": "demo-news-moel-1",
+        },
+        {
+            "title": "[예시] 고용노동부, 밀폐공간 질식재해 예방 집중 점검 실시",
+            "link": "https://www.moel.go.kr",
+            "guid": "demo-news-moel-2",
+        },
+        {
+            "title": "[예시] 산업안전보건법 시행규칙 개정안 행정예고",
+            "link": "https://www.moel.go.kr",
+            "guid": "demo-news-moel-3",
+        },
+    ],
+    "kosha": [
+        {
+            "title": "[예시] 안전보건공단, 여름철 온열질환 예방 안전보건 가이드 배포",
+            "link": "https://www.kosha.or.kr",
+            "guid": "demo-news-kosha-1",
+        },
+        {
+            "title": "[예시] 안전보건공단, 건설현장 추락재해 예방 특별 캠페인 실시",
+            "link": "https://www.kosha.or.kr",
+            "guid": "demo-news-kosha-2",
+        },
+        {
+            "title": "[예시] 안전보건공단, 위험성평가 우수사례 공모전 접수",
+            "link": "https://www.kosha.or.kr",
+            "guid": "demo-news-kosha-3",
+        },
+    ],
+    "accident": [
+        {
+            "title": "[예시] 제조업 사업장 끼임 사고로 중대재해 발생, 관계기관 조사 착수",
+            "link": "https://www.moel.go.kr",
+            "guid": "demo-news-accident-1",
+        },
+        {
+            "title": "[예시] 건설현장 추락사고 중대재해 판단, 원청 안전보건관리체계 점검",
+            "link": "https://www.moel.go.kr",
+            "guid": "demo-news-accident-2",
+        },
+        {
+            "title": "[예시] 화학물질 누출사고로 인한 중대산업재해 조사 진행",
+            "link": "https://www.moel.go.kr",
+            "guid": "demo-news-accident-3",
+        },
+    ],
+}
+
+
+def demo_news(category: str) -> list[dict]:
+    return [dict(item, published_at=None) for item in DEMO_NEWS.get(category, [])]
