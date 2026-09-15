@@ -82,7 +82,11 @@ class Settings:
     # 형식이면 어떤 URL이든 동작).
     NEWS_TICKER_ENABLED: bool = _bool(os.getenv("NEWS_TICKER_ENABLED"), True)
     NEWS_FETCH_INTERVAL_HOURS: int = int(os.getenv("NEWS_FETCH_INTERVAL_HOURS", "3") or "0")
-    NEWS_MAX_ITEMS_PER_CATEGORY: int = int(os.getenv("NEWS_MAX_ITEMS_PER_CATEGORY", "30") or "30")
+    # 대시보드 게시판(자동 스크롤)은 어차피 최신 몇 건만 보여주지만, 이 값은
+    # 동시에 "안전보건 뉴스" 별도 페이지에서 검색할 수 있는 범위(보관 기간)도
+    # 정한다 - 너무 작으면 며칠 전 뉴스도 검색이 안 되므로 기본값을 30에서
+    # 100으로 올렸다.
+    NEWS_MAX_ITEMS_PER_CATEGORY: int = int(os.getenv("NEWS_MAX_ITEMS_PER_CATEGORY", "100") or "100")
     NEWS_SOURCE_MOEL_URL: str = os.getenv(
         "NEWS_SOURCE_MOEL_URL",
         "https://news.google.com/rss/search?q=%EA%B3%A0%EC%9A%A9%EB%85%B8%EB%8F%99%EB%B6%80%20%EC%95%88%EC%A0%84%EB%B3%B4%EA%B1%B4&hl=ko&gl=KR&ceid=KR:ko",

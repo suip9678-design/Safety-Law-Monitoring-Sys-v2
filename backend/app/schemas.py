@@ -249,6 +249,13 @@ class NewsItemOut(BaseModel):
     is_demo: bool = False
 
 
+class NewsSearchResult(BaseModel):
+    items: list[NewsItemOut]
+    # 필터 조건에 맞는 전체 건수(응답에 담긴 items가 limit에 걸려 잘렸어도
+    # 실제로는 몇 건이 있는지 화면에서 알려줄 수 있도록).
+    total: int
+
+
 class DocumentImpactOut(BaseModel):
     document_id: int
     document_title: str

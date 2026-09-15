@@ -143,6 +143,7 @@ function viewRevisionsForLaw(lawId, lawName) {
 
 function loadTab(tab) {
   if (tab === "dashboard") loadDashboard();
+  if (tab === "news") loadNewsPage();
   if (tab === "laws") loadLaws();
   if (tab === "revisions") loadRevisions();
   if (tab === "documents") loadDocuments();
@@ -589,6 +590,123 @@ function initNewsBoard() {
     });
   });
   startNewsAutoScroll();
+  document.getElementById("goToNewsPageBtn").addEventListener("click", () => {
+    activateTab("news");
+    loadNewsPage();
+  });
+}
+
+// ---------- 안전보건 뉴스 (별도 페이지: 검색) ----------
+//
+// 대시보드 게시판은 최신 몇 건만 자동 스크롤로 훑어보는 용도라, 예전 기사를
+// 찾거나 특정 기간에 어떤 사고/이슈가 있었는지 모아보려면 검색이 필요하다.
+// 카테고리/키워드는 즉시 반응하고(입력 중엔 디바운스), 날짜 범위는 시작일 >
+// 종료일 같은 실수를 막기 위해 "검색" 버튼(또는 폼 제출)을 눌러야 반영된다.
+// 실제 필터링(카테고리, 제목 키워드, 날짜 범위)은 모두 서버(/api/news/search)
+// 에서 수행한다 - 날짜는 published_at(없으면 fetched_at) 기준이라 클라이언트
+// 에 이미 내려받은 목록만으로는 정확히 거를 수 없기 때문이다.
+const newsPageState = { category: "", q: "", dateFrom: "", dateTo: "" };
+
+function renderNewsPageResults(data) {
+  const el = document.getElementById("newsPageResults");
+  const items = data.items || [];
+  const total = data.total || 0;
+  document.getElementById("newsPageDemoBadge").hidden = !items.some((n) => n.is_demo);
+
+  const hasFilter = !!(newsPageState.q || newsPageState.category || newsPageState.dateFrom || newsPageState.dateTo);
+  document.getElementById("newsPageSearchStatus").textContent = total
+    ? `총 ${total}건${items.length < total ? ` 중 최근 ${items.length}건 표시 (검색어를 좁혀보세요)` : ""}`
+    : "";
+
+  if (!items.length) {
+    el.innerHTML = `<div class="empty">${
+      hasFilter
+        ? "지정한 조건에 맞는 뉴스가 없습니다. 검색어나 날짜 범위를 조정해보세요."
+        : `표시할 뉴스가 없습니다. 설정 &gt; 안전보건 뉴스 게시판에서 "지금 새로고침"을 눌러보세요.`
+    }</div>`;
+    return;
+  }
+
+  el.innerHTML = `
+    <table>
+      <thead><tr><th>구분</th><th>제목</th><th>게시일</th></tr></thead>
+      <tbody>
+        ${items
+          .map(
+            (n) => `
+              <tr>
+                <td><span class="news-board-source news-src-${n.category}">${escapeHtml(n.source_name)}</span></td>
+                <td>
+                  <a href="${escapeHtml(n.link)}" target="_blank" rel="noopener">${escapeHtml(n.title)}</a>
+                  ${n.is_demo ? '<span class="badge badge-warn">예시</span>' : ""}
+                </td>
+                <td>${fmtDateTime(n.published_at || n.fetched_at)}</td>
+              </tr>
+            `
+          )
+          .join("")}
+      </tbody>
+    </table>
+  `;
+}
+
+async function loadNewsPage() {
+  const params = new URLSearchParams();
+  if (newsPageState.category) params.set("category", newsPageState.category);
+  if (newsPageState.q) params.set("q", newsPageState.q);
+  if (newsPageState.dateFrom) params.set("date_from", newsPageState.dateFrom);
+  if (newsPageState.dateTo) params.set("date_to", newsPageState.dateTo);
+  try {
+    const data = await api(`/api/news/search${params.toString() ? `?${params.toString()}` : ""}`);
+    renderNewsPageResults(data);
+  } catch (e) {
+    toast(`뉴스 검색 실패: ${e.message}`, true);
+  }
+}
+
+function initNewsPage() {
+  document.querySelectorAll("#newsPageCategoryFilters .news-filter-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll("#newsPageCategoryFilters .news-filter-btn").forEach((b) => b.classList.toggle("active", b === btn));
+      newsPageState.category = btn.dataset.cat || "";
+      loadNewsPage();
+    });
+  });
+
+  document.getElementById("newsPageSearchForm").addEventListener("submit", (ev) => {
+    ev.preventDefault();
+    const dateFrom = document.getElementById("newsPageDateFrom").value;
+    const dateTo = document.getElementById("newsPageDateTo").value;
+    if (dateFrom && dateTo && dateFrom > dateTo) {
+      toast("시작일이 종료일보다 늦을 수 없습니다.", true);
+      return;
+    }
+    newsPageState.q = document.getElementById("newsPageQueryInput").value.trim();
+    newsPageState.dateFrom = dateFrom;
+    newsPageState.dateTo = dateTo;
+    loadNewsPage();
+  });
+
+  let newsPageDebounceTimer = null;
+  document.getElementById("newsPageQueryInput").addEventListener("input", (e) => {
+    clearTimeout(newsPageDebounceTimer);
+    newsPageDebounceTimer = setTimeout(() => {
+      newsPageState.q = e.target.value.trim();
+      loadNewsPage();
+    }, 400);
+  });
+
+  document.getElementById("newsPageResetBtn").addEventListener("click", () => {
+    newsPageState.category = "";
+    newsPageState.q = "";
+    newsPageState.dateFrom = "";
+    newsPageState.dateTo = "";
+    document.getElementById("newsPageQueryInput").value = "";
+    document.getElementById("newsPageDateFrom").value = "";
+    document.getElementById("newsPageDateTo").value = "";
+    document.querySelectorAll("#newsPageCategoryFilters .news-filter-btn").forEach((b) => b.classList.toggle("active", !b.dataset.cat));
+    loadNewsPage();
+  });
 }
 
 // ---------- laws ----------
@@ -1732,6 +1850,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initHelpModal();
   initKeywordSearch();
   initNewsBoard();
+  initNewsPage();
   document.getElementById("searchBtn").addEventListener("click", searchLaws);
   document.getElementById("searchQuery").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); searchLaws(); } });
   let searchDebounceTimer = null;
