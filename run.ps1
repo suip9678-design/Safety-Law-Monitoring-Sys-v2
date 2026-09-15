@@ -2,24 +2,90 @@
 
 Set-Location $PSScriptRoot
 
+# run.bat이 이미 이 PowerShell 프로세스 전체를 -ExecutionPolicy Bypass로
+# 띄우지만, 사용자가 run.ps1을 직접(.\run.ps1) 실행했을 때도 venv의
+# Activate.ps1이 "이 시스템에서 스크립트를 실행할 수 없습니다" 오류로
+# 막히지 않도록 이 프로세스 하나에만 한 번 더 걸어둔다. 레지스트리에
+# 저장되는 영구 설정이 아니라 이 창을 닫으면 사라지는 임시 허용이다.
+try { Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass -Force -ErrorAction SilentlyContinue } catch {}
+
+function Find-Python {
+    foreach ($cmd in @("python", "py")) {
+        $found = Get-Command $cmd -ErrorAction SilentlyContinue
+        if ($found) { return $found.Source }
+    }
+    return $null
+}
+
+# 가상환경이 없으면 만들고, 필요한 패키지가 없으면 설치하고, .env가 없으면
+# 예시 파일을 복사해둔다 - 최초 설치를 따로 안 해도 run.bat 더블클릭
+# 한 번으로 전부 끝나게 하기 위함. 이미 다 되어 있으면(두 번째 실행부터는
+# 거의 항상 이 경우) 아무것도 다시 하지 않아 빠르게 지나간다.
+function Ensure-BackendReady {
+    $backendPath = Join-Path $PSScriptRoot "backend"
+    $venvPath = Join-Path $backendPath ".venv"
+    $venvActivate = Join-Path $venvPath "Scripts\Activate.ps1"
+
+    if (-not (Test-Path $venvActivate)) {
+        Write-Host "가상환경(.venv)이 없어 새로 만듭니다 (최초 1회만 실행됩니다)..." -ForegroundColor Cyan
+        $python = Find-Python
+        if (-not $python) {
+            Write-Host "`n파이썬을 찾을 수 없습니다. https://www.python.org/downloads/ 에서 설치 후 다시 실행해주세요." -ForegroundColor Red
+            Write-Host "설치 화면에서 'Add python.exe to PATH' 옵션을 꼭 체크하세요." -ForegroundColor Yellow
+            return $false
+        }
+        & $python -m venv $venvPath
+        if (-not (Test-Path $venvActivate)) {
+            Write-Host "`n가상환경 생성에 실패했습니다." -ForegroundColor Red
+            return $false
+        }
+    }
+
+    . $venvActivate
+
+    if (-not (Get-Command uvicorn -ErrorAction SilentlyContinue)) {
+        Write-Host "필요한 패키지를 설치합니다 (최초 1회, 몇 분 걸릴 수 있습니다)..." -ForegroundColor Cyan
+        Push-Location $backendPath
+        pip install -q -r requirements.txt
+        if ($LASTEXITCODE -ne 0) {
+            # 사내망/백신/VPN이 자체 인증서로 HTTPS를 가로채는 경우
+            # "CERTIFICATE_VERIFY_FAILED"로 실패한다 - pypi.org와
+            # files.pythonhosted.org만 신뢰하도록 지정해 재시도한다.
+            Write-Host "일반 설치가 실패했습니다 (사내망 SSL 인증서 문제일 수 있음). 다시 시도합니다..." -ForegroundColor Yellow
+            pip install -q --trusted-host pypi.org --trusted-host files.pythonhosted.org -r requirements.txt
+        }
+        $installFailed = ($LASTEXITCODE -ne 0)
+        Pop-Location
+        if ($installFailed) {
+            Write-Host "`n패키지 설치에 실패했습니다. 인터넷 연결 또는 사내망 보안 설정을 확인해주세요." -ForegroundColor Red
+            return $false
+        }
+    }
+
+    $envFile = Join-Path $backendPath ".env"
+    $envExample = Join-Path $backendPath ".env.example"
+    if ((-not (Test-Path $envFile)) -and (Test-Path $envExample)) {
+        Copy-Item $envExample $envFile
+        Write-Host "backend\.env 파일이 없어 .env.example을 복사해 만들었습니다 (필요하면 나중에 값을 채워넣으세요)." -ForegroundColor Cyan
+    }
+
+    return $true
+}
+
 function Start-Server {
     Set-Location $PSScriptRoot
 
     Write-Host "`n[1/3] 최신 코드 받는 중 (git pull)..." -ForegroundColor Cyan
     git pull
 
-    $backendPath = Join-Path $PSScriptRoot "backend"
-    $venvActivate = Join-Path $backendPath ".venv\Scripts\Activate.ps1"
-
-    if (-not (Test-Path $venvActivate)) {
-        Write-Host "`n가상환경(.venv)을 찾을 수 없습니다. README.md를 확인해주세요." -ForegroundColor Red
+    Write-Host "`n[2/3] 실행 환경 준비 중 (가상환경/패키지 확인)..." -ForegroundColor Cyan
+    if (-not (Ensure-BackendReady)) {
+        Set-Location $PSScriptRoot
         return
     }
 
+    $backendPath = Join-Path $PSScriptRoot "backend"
     Set-Location $backendPath
-
-    Write-Host "`n[2/3] 가상환경 활성화 중..." -ForegroundColor Cyan
-    . $venvActivate
 
     $uvicorn = Get-Command uvicorn -ErrorAction SilentlyContinue
     if (-not $uvicorn) {
