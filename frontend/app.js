@@ -487,6 +487,7 @@ async function loadDashboard() {
     toast(`대시보드 로드 실패: ${e.message}`, true);
   }
   loadNewsBoard();
+  refreshNewsBoardInBackground();
 }
 
 // ---------- 안전보건 뉴스 게시판 ----------
@@ -530,6 +531,31 @@ async function loadNewsBoard() {
   } catch (e) {
     // 뉴스 게시판은 부가 기능이라, 실패해도 토스트로 화면 전체를 방해하지 않는다.
     document.getElementById("newsBoardTrack").innerHTML = "";
+  }
+}
+
+// 뉴스 게시판은 주기 수집(기본 3시간)에 맞춰서만 갱신되므로, 대시보드에 들어올
+// 때마다(최초 진입, F5, 다른 브라우저 탭을 보다가 돌아오는 경우) 화면은 일단
+// 캐시된 목록으로 먼저 채우고 뒤에서 조용히 재스크랩한 뒤 목록만 다시 채운다.
+// 실패해도(네트워크 차단 등) 캐시된 내용을 그대로 보여주면 되므로 토스트 없이
+// 무시한다. 짧은 시간에 탭을 여러 번 들락거려도 매번 스크랩하지 않도록
+// 최소 간격을 둔다.
+const NEWS_BG_SYNC_MIN_INTERVAL_MS = 60_000;
+let newsBackgroundSyncing = false;
+let lastNewsBgSyncAt = 0;
+
+async function refreshNewsBoardInBackground() {
+  const now = Date.now();
+  if (newsBackgroundSyncing || now - lastNewsBgSyncAt < NEWS_BG_SYNC_MIN_INTERVAL_MS) return;
+  newsBackgroundSyncing = true;
+  lastNewsBgSyncAt = now;
+  try {
+    await api("/api/news/sync", { method: "POST" });
+    await loadNewsBoard();
+  } catch (e) {
+    /* 무시 - 다음 주기 수집이나 수동 새로고침으로 대체된다. */
+  } finally {
+    newsBackgroundSyncing = false;
   }
 }
 
