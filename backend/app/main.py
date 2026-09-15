@@ -97,8 +97,8 @@ def _scheduled_news_sync():
         values = settings_store.get_all(db)
         if values.get("news_ticker_enabled", "true").strip().lower() not in ("1", "true", "yes", "on"):
             return
-        max_items = int(values.get("news_max_items_per_category") or settings.NEWS_MAX_ITEMS_PER_CATEGORY)
-        added = news_service.sync_news(db, news_service.configured_sources(db), max_items)
+        retention_days = int(values.get("news_retention_days") or settings.NEWS_RETENTION_DAYS)
+        added = news_service.sync_news(db, news_service.configured_sources(db), retention_days)
         logger.info("안전보건 뉴스 게시판 동기화 완료: 신규 %d건", added)
     except Exception:  # noqa: BLE001 - 뉴스 게시판 갱신 실패가 다른 스케줄 작업을 막으면 안 됨
         logger.exception("안전보건 뉴스 게시판 동기화 중 오류")

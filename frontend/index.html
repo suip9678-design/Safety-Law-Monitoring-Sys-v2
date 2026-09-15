@@ -88,9 +88,9 @@
         <p class="hint">
           고용노동부·안전보건공단 안전보건 이슈, 중대재해 관련 뉴스를 카테고리·키워드·날짜로 검색합니다.
           최근 뉴스만 훑어보려면 대시보드 상단의 자동 스크롤 게시판을 이용하고, 예전 기사를 찾거나 특정 기간의
-          사고 소식을 모아보려면 여기서 검색하세요. 검색 대상은 설정 &gt; 안전보건 뉴스 게시판의
-          <b>"카테고리별 최대 보관 건수"</b>만큼만 저장되어 있으므로, 그보다 오래된 기사는 나오지 않습니다 —
-          더 넓은 기간을 검색하려면 그 값을 늘려두세요.
+          사고 소식을 모아보려면 여기서 검색하세요. 뉴스는 발행일 기준 설정 &gt; 안전보건 뉴스 게시판의
+          <b>"보관 기간"</b>(기본 6개월)이 지나면 자동 삭제되므로 그보다 오래된 기사는 나오지 않습니다 — 계속 남겨두고
+          싶은 기사는 목록에서 <b>"보관"</b>을 눌러두면 기간이 지나도 삭제되지 않습니다.
         </p>
         <div class="row news-board-filters" id="newsPageCategoryFilters">
           <button type="button" class="news-filter-btn active" data-cat="">전체</button>
@@ -102,6 +102,7 @@
           <input id="newsPageQueryInput" type="text" placeholder="제목으로 검색 (예: 중대재해, 추락)" style="flex: 1; min-width: 200px;" />
           <label>시작일 <input id="newsPageDateFrom" type="date" /></label>
           <label>종료일 <input id="newsPageDateTo" type="date" /></label>
+          <label><input type="checkbox" id="newsPageArchivedOnly" /> 보관함만 보기</label>
           <button type="submit" class="btn btn-primary">검색</button>
           <button type="button" id="newsPageResetBtn" class="btn">초기화</button>
         </form>
@@ -313,9 +314,10 @@
           <section id="help-news">
             <h3>안전보건 뉴스</h3>
             <p>대시보드 게시판(자동 스크롤)과 같은 데이터를 대상으로, 별도 화면에서 카테고리·키워드(제목)·날짜 범위로 검색합니다.
-            "전체보기 · 검색" 버튼(대시보드 게시판 우측)이나 상단 탭에서 들어갈 수 있습니다. 검색 가능한 기간은 설정 &gt; 안전보건
-            뉴스 게시판의 "카테고리별 최대 보관 건수"만큼으로 한정되며(그보다 오래된 기사는 정리되어 DB에 없음), 더 넓게 검색하려면
-            그 값을 늘려두세요.</p>
+            "전체보기 · 검색" 버튼(대시보드 게시판 우측)이나 상단 탭에서 들어갈 수 있습니다. 뉴스는 발행일 기준 설정 &gt; 안전보건
+            뉴스 게시판의 "보관 기간"(기본 180일 = 6개월)이 지나면 자동 삭제됩니다 — 계속 남겨두고 싶은 기사는 목록에서
+            "보관"을 눌러두면 기간이 지나도 삭제되지 않고, "보관함만 보기"로 모아볼 수 있습니다. 더 넓은 기간을 검색하려면
+            설정에서 보관 기간 값을 늘려두세요.</p>
           </section>
 
           <section id="help-laws">
@@ -467,8 +469,11 @@
           <label class="full">고용노동부 피드 URL <input id="newsSourceMoelUrl" type="text" placeholder="https://..." /></label>
           <label class="full">안전보건공단 피드 URL <input id="newsSourceKoshaUrl" type="text" placeholder="https://..." /></label>
           <label class="full">중대재해 뉴스 피드 URL <input id="newsSourceAccidentUrl" type="text" placeholder="https://..." /></label>
-          <label class="full">카테고리별 최대 보관 건수 <input id="newsMaxItems" type="number" min="5" max="1000" style="max-width: 160px;" />
-            <span class="hint">이 건수만큼 DB에 보관되며, "안전보건 뉴스" 탭에서 검색할 수 있는 기간도 이 값에 따라 정해집니다 — 더 오래된 기사를 검색하려면 값을 늘리세요.</span>
+          <label class="full">보관 기간(일) <input id="newsRetentionDays" type="number" min="7" max="3650" style="max-width: 160px;" />
+            <span class="hint">
+              발행일 기준 이 기간(기본 180일 = 6개월)이 지난 뉴스는 자동 삭제됩니다. "안전보건 뉴스" 탭에서 개별 항목을
+              "보관" 처리해두면 기간이 지나도 삭제되지 않고 계속 남습니다. 이 값이 곧 검색 가능한 기간이기도 합니다.
+            </span>
           </label>
           <div class="form-actions">
             <button type="submit" class="btn btn-primary">저장</button>

@@ -605,7 +605,7 @@ function initNewsBoard() {
 // 실제 필터링(카테고리, 제목 키워드, 날짜 범위)은 모두 서버(/api/news/search)
 // 에서 수행한다 - 날짜는 published_at(없으면 fetched_at) 기준이라 클라이언트
 // 에 이미 내려받은 목록만으로는 정확히 거를 수 없기 때문이다.
-const newsPageState = { category: "", q: "", dateFrom: "", dateTo: "" };
+const newsPageState = { category: "", q: "", dateFrom: "", dateTo: "", archivedOnly: false };
 
 function renderNewsPageResults(data) {
   const el = document.getElementById("newsPageResults");
@@ -613,7 +613,7 @@ function renderNewsPageResults(data) {
   const total = data.total || 0;
   document.getElementById("newsPageDemoBadge").hidden = !items.some((n) => n.is_demo);
 
-  const hasFilter = !!(newsPageState.q || newsPageState.category || newsPageState.dateFrom || newsPageState.dateTo);
+  const hasFilter = !!(newsPageState.q || newsPageState.category || newsPageState.dateFrom || newsPageState.dateTo || newsPageState.archivedOnly);
   document.getElementById("newsPageSearchStatus").textContent = total
     ? `총 ${total}건${items.length < total ? ` 중 최근 ${items.length}건 표시 (검색어를 좁혀보세요)` : ""}`
     : "";
@@ -629,7 +629,7 @@ function renderNewsPageResults(data) {
 
   el.innerHTML = `
     <table>
-      <thead><tr><th>구분</th><th>제목</th><th>게시일</th></tr></thead>
+      <thead><tr><th>구분</th><th>제목</th><th>게시일</th><th></th></tr></thead>
       <tbody>
         ${items
           .map(
@@ -639,8 +639,12 @@ function renderNewsPageResults(data) {
                 <td>
                   <a href="${escapeHtml(n.link)}" target="_blank" rel="noopener">${escapeHtml(n.title)}</a>
                   ${n.is_demo ? '<span class="badge badge-warn">예시</span>' : ""}
+                  ${n.is_archived ? '<span class="badge badge-ok">보관됨</span>' : ""}
                 </td>
                 <td>${fmtDateTime(n.published_at || n.fetched_at)}</td>
+                <td><button type="button" class="link-btn" data-toggle-archive="${n.id}" data-archived="${n.is_archived ? "1" : ""}">${
+                  n.is_archived ? "보관 해제" : "보관"
+                }</button></td>
               </tr>
             `
           )
@@ -648,6 +652,22 @@ function renderNewsPageResults(data) {
       </tbody>
     </table>
   `;
+  el.querySelectorAll("[data-toggle-archive]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const nextArchived = !btn.dataset.archived;
+      btn.disabled = true;
+      try {
+        await api(`/api/news/${btn.dataset.toggleArchive}/archive`, {
+          method: "PATCH",
+          body: JSON.stringify({ is_archived: nextArchived }),
+        });
+        loadNewsPage();
+      } catch (e) {
+        toast(`보관 처리 실패: ${e.message}`, true);
+        btn.disabled = false;
+      }
+    });
+  });
 }
 
 async function loadNewsPage() {
@@ -656,6 +676,7 @@ async function loadNewsPage() {
   if (newsPageState.q) params.set("q", newsPageState.q);
   if (newsPageState.dateFrom) params.set("date_from", newsPageState.dateFrom);
   if (newsPageState.dateTo) params.set("date_to", newsPageState.dateTo);
+  if (newsPageState.archivedOnly) params.set("archived", "true");
   try {
     const data = await api(`/api/news/search${params.toString() ? `?${params.toString()}` : ""}`);
     renderNewsPageResults(data);
@@ -684,6 +705,12 @@ function initNewsPage() {
     newsPageState.q = document.getElementById("newsPageQueryInput").value.trim();
     newsPageState.dateFrom = dateFrom;
     newsPageState.dateTo = dateTo;
+    newsPageState.archivedOnly = document.getElementById("newsPageArchivedOnly").checked;
+    loadNewsPage();
+  });
+
+  document.getElementById("newsPageArchivedOnly").addEventListener("change", (e) => {
+    newsPageState.archivedOnly = e.target.checked;
     loadNewsPage();
   });
 
@@ -701,9 +728,11 @@ function initNewsPage() {
     newsPageState.q = "";
     newsPageState.dateFrom = "";
     newsPageState.dateTo = "";
+    newsPageState.archivedOnly = false;
     document.getElementById("newsPageQueryInput").value = "";
     document.getElementById("newsPageDateFrom").value = "";
     document.getElementById("newsPageDateTo").value = "";
+    document.getElementById("newsPageArchivedOnly").checked = false;
     document.querySelectorAll("#newsPageCategoryFilters .news-filter-btn").forEach((b) => b.classList.toggle("active", !b.dataset.cat));
     loadNewsPage();
   });
@@ -1570,7 +1599,7 @@ async function loadSettings() {
     document.getElementById("newsSourceMoelUrl").value = s.news_source_moel_url || "";
     document.getElementById("newsSourceKoshaUrl").value = s.news_source_kosha_url || "";
     document.getElementById("newsSourceAccidentUrl").value = s.news_source_accident_url || "";
-    document.getElementById("newsMaxItems").value = s.news_max_items_per_category || 30;
+    document.getElementById("newsRetentionDays").value = s.news_retention_days || 180;
   } catch (e) {
     toast(`설정 로드 실패: ${e.message}`, true);
   }
@@ -1771,7 +1800,7 @@ function initSettingsForms() {
       news_source_moel_url: document.getElementById("newsSourceMoelUrl").value,
       news_source_kosha_url: document.getElementById("newsSourceKoshaUrl").value,
       news_source_accident_url: document.getElementById("newsSourceAccidentUrl").value,
-      news_max_items_per_category: Number(document.getElementById("newsMaxItems").value) || 30,
+      news_retention_days: Number(document.getElementById("newsRetentionDays").value) || 180,
     };
     const btn = ev.target.querySelector('button[type="submit"]');
     btn.disabled = true;

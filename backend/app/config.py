@@ -82,11 +82,12 @@ class Settings:
     # 형식이면 어떤 URL이든 동작).
     NEWS_TICKER_ENABLED: bool = _bool(os.getenv("NEWS_TICKER_ENABLED"), True)
     NEWS_FETCH_INTERVAL_HOURS: int = int(os.getenv("NEWS_FETCH_INTERVAL_HOURS", "3") or "0")
-    # 대시보드 게시판(자동 스크롤)은 어차피 최신 몇 건만 보여주지만, 이 값은
-    # 동시에 "안전보건 뉴스" 별도 페이지에서 검색할 수 있는 범위(보관 기간)도
-    # 정한다 - 너무 작으면 며칠 전 뉴스도 검색이 안 되므로 기본값을 30에서
-    # 100으로 올렸다.
-    NEWS_MAX_ITEMS_PER_CATEGORY: int = int(os.getenv("NEWS_MAX_ITEMS_PER_CATEGORY", "100") or "100")
+    # 뉴스 1건당 용량이 URL/제목 정도라 매우 작아(건당 1KB 미만) 개수보다는
+    # "발행일 기준 며칠까지 보관할지"로 관리하는 게 더 직관적이다. 이 기간이
+    # 지난 뉴스는 자동 삭제되지만, 사용자가 "안전보건 뉴스" 화면에서 개별
+    # 항목을 "보관" 처리해두면 기간이 지나도 삭제되지 않는다
+    # (NewsItem.is_archived, news_service.sync_news 참고).
+    NEWS_RETENTION_DAYS: int = int(os.getenv("NEWS_RETENTION_DAYS", "180") or "180")
     NEWS_SOURCE_MOEL_URL: str = os.getenv(
         "NEWS_SOURCE_MOEL_URL",
         "https://news.google.com/rss/search?q=%EA%B3%A0%EC%9A%A9%EB%85%B8%EB%8F%99%EB%B6%80%20%EC%95%88%EC%A0%84%EB%B3%B4%EA%B1%B4&hl=ko&gl=KR&ceid=KR:ko",

@@ -1,6 +1,6 @@
 import datetime
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
@@ -48,6 +48,7 @@ def search_news(
     category: str | None = None,
     date_from: str | None = None,
     date_to: str | None = None,
+    archived: bool | None = None,
     limit: int = 200,
     db: Session = Depends(get_db),
 ):
@@ -57,14 +58,16 @@ def search_news(
 
     날짜는 published_at(피드가 안 준 경우 fetched_at)을 기준으로 하루
     단위로 거른다. 검색 범위는 news_service.sync_news가 보관하는 만큼(설정
-    "카테고리별 최대 보관 건수")으로 한정된다 - 그보다 오래된 기사는 이미
-    정리되어 DB에 없다."""
+    "보관 기간")으로 한정된다 - 그 기간이 지나고 "보관" 처리도 안 해둔
+    기사는 이미 정리되어 DB에 없다."""
     order_col = func.coalesce(models.NewsItem.published_at, models.NewsItem.fetched_at)
     query = db.query(models.NewsItem)
     if category:
         query = query.filter(models.NewsItem.category == category)
     if q and q.strip():
         query = query.filter(models.NewsItem.title.ilike(f"%{q.strip()}%"))
+    if archived is not None:
+        query = query.filter(models.NewsItem.is_archived.is_(archived))
     parsed_from = _parse_date(date_from)
     if parsed_from:
         query = query.filter(order_col >= parsed_from)
@@ -77,9 +80,23 @@ def search_news(
     return schemas.NewsSearchResult(items=items, total=total)
 
 
+@router.patch("/{news_id}/archive", response_model=schemas.NewsItemOut)
+def set_news_archived(news_id: int, payload: schemas.NewsArchiveUpdate, db: Session = Depends(get_db)):
+    """뉴스 한 건을 "보관" 처리(또는 해제)한다. 보관 처리된 항목은 발행일
+    기준 보관 기간이 지나도 news_service.sync_news의 자동 정리에서
+    제외된다."""
+    item = db.get(models.NewsItem, news_id)
+    if item is None:
+        raise HTTPException(status_code=404, detail="해당 뉴스를 찾을 수 없습니다.")
+    item.is_archived = payload.is_archived
+    db.commit()
+    db.refresh(item)
+    return item
+
+
 @router.post("/sync")
 def sync_now(db: Session = Depends(get_db)):
     values = settings_store.get_all(db)
-    max_items = int(values.get("news_max_items_per_category") or 30)
-    added = news_service.sync_news(db, news_service.configured_sources(db), max_items)
+    retention_days = int(values.get("news_retention_days") or 180)
+    added = news_service.sync_news(db, news_service.configured_sources(db), retention_days)
     return {"added": added}
