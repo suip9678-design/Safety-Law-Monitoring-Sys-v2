@@ -163,12 +163,25 @@ class KoshaGuideApiClient:
 
         try:
             resp = _client.get(self.base_url, params=params, timeout=self.timeout)
-            resp.raise_for_status()
         except httpx.HTTPError as exc:
             raise KoshaGuideApiError(
                 f"KOSHA 가이드 검색 API 호출에 실패했습니다: {exc} "
                 f"(요청 URL이 맞는지 설정 화면에서 확인해보세요 — 현재: {self.base_url})"
             ) from exc
+
+        if resp.status_code >= 400:
+            # raise_for_status()만 쓰면 상태 코드만 보이고 응답 본문(공공데이터
+            # 포털의 표준 오류 코드 - 예: SERVICE_KEY_IS_NOT_REGISTERED_ERROR는
+            # 인증키가 틀렸다는 뜻, NO_OPENAPI_SERVICE_ERROR는 요청 URL/서비스
+            # ID가 틀렸다는 뜻 - 은 사라진다. 이 본문이 원인을 정확히 알려주는
+            # 경우가 대부분이라 그대로 잘라서 보여준다.
+            body_preview = resp.text.strip()
+            if len(body_preview) > 500:
+                body_preview = body_preview[:500] + "…"
+            raise KoshaGuideApiError(
+                f"KOSHA 가이드 검색 API가 {resp.status_code} 오류를 반환했습니다: {body_preview or '(응답 본문 없음)'} "
+                f"(요청 URL이 맞는지, 인증키가 맞는지 설정 화면에서 확인해보세요 — 현재 요청 URL: {self.base_url})"
+            )
 
         content = resp.content
         stripped = content.lstrip()
