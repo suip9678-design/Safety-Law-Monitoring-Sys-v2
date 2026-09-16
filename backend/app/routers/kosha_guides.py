@@ -226,6 +226,7 @@ def sync_from_api(db: Session = Depends(get_db)):
             outcome = _upsert(
                 db, code, _clean(item.get("field")), title,
                 _clean(item.get("issued_date")), _clean(item.get("file_link")),
+                item.get("content") or None,
             )
             if outcome == "updated":
                 updated += 1

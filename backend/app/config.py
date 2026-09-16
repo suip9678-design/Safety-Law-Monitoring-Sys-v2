@@ -32,13 +32,15 @@ class Settings:
     # KOSHA 가이드(KOSHA GUIDE) 동기화용 공공데이터포털 "한국산업안전보건공단_
     # 안전보건법령 스마트검색" Open API. 국가법령정보센터(LAW_API_OC)와는
     # 완전히 별개의 키/엔드포인트다. 자세한 내용은 kosha_guide_api.py 상단
-    # 설명 참고. End Point는 실제 활용신청 상세페이지("일반 인증키"/"End
-    # Point" 안내 화면)에서 사용자가 직접 확인해 보내준 값이다. 혹시 이후
+    # 설명 참고. 이 URL은 사용자가 받은 공식 "오픈API 활용가이드" 문서의
+    # "Call Back URL"/"요청메시지 예제"로 확정한 값이다(활용신청 상세페이지의
+    # "End Point" 칸에는 이 중 서비스 URL 부분(.../srch)만 나오고 뒤의
+    # 오퍼레이션 경로(/smartSearch)는 빠져 있어 처음에 놓쳤었다). 혹시 이후
     # data.go.kr 쪽에서 경로가 바뀌면 설정 화면에서 직접 고칠 수 있다.
     KOSHA_GUIDE_API_KEY: str = os.getenv("KOSHA_GUIDE_API_KEY", "").strip()
     KOSHA_GUIDE_API_URL: str = os.getenv(
         "KOSHA_GUIDE_API_URL",
-        "https://apis.data.go.kr/B552468/srch",
+        "https://apis.data.go.kr/B552468/srch/smartSearch",
     ).strip()
     # 스마트검색은 "전체 목록"이 아니라 키워드 검색 API라, 동기화할 때 이
     # 키워드들로 차례로 검색해 그 결과 중 KOSHA GUIDE(기술지침)로 분류되는
