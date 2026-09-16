@@ -539,9 +539,9 @@
         <p class="hint">
           공공데이터포털에서 "한국산업안전보건공단_안전보건법령 스마트검색" API 활용신청이 승인되면 여기에 인증키를
           입력하고 <b>KOSHA 가이드</b> 탭의 "동기화"를 눌러 KOSHA GUIDE를 자동으로 채울 수 있습니다.
-          <b>요청 URL은 이 개발 환경에서 실제 응답으로 검증하지 못한 추정값</b>입니다 - 동기화가 계속 실패하면,
-          공공데이터포털 마이페이지 &gt; 활용신청 상세보기 화면에 나온 실제 "요청 URL(Service URL)"로 아래 값을
-          바꿔주세요.
+          인증키는 공공데이터포털 활용신청 상세페이지의 <b>"일반 인증키"</b>를 그대로 붙여넣으면 됩니다(Encoding/Decoding
+          어느 쪽이든 상관없습니다). 요청 URL은 그 페이지의 <b>"End Point"</b> 값과 같아야 동작합니다 - data.go.kr이
+          나중에 경로를 바꾸면 여기서 그 값으로 갱신해주세요.
         </p>
         <form id="koshaGuideApiForm" class="grid-form">
           <label>인증키(서비스키) <input id="koshaGuideApiKey" type="text" placeholder="공공데이터포털에서 발급받은 인증키" /></label>
