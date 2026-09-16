@@ -89,11 +89,45 @@ function Get-ConfiguredPort {
     return 8000
 }
 
+function Update-FromGit {
+    # 로컬에 커밋되지 않은 변경사항(예: 이 폴더에서 직접 파일을 고친 적이
+    # 있는 경우)이 있으면 git pull이 "Your local changes... would be
+    # overwritten by merge"로 막힌다 - 그때마다 사용자가 직접 git stash를
+    # 해야 했던 번거로움을 없애려고, 있으면 자동으로 잠깐 보관해뒀다가
+    # (untracked 파일은 건드리지 않고 추적 중인 파일 변경분만) pull이 끝나면
+    # 다시 얹는다. 최신 커밋으로 실제로 업데이트됐는지도 커밋 해시로 비교해
+    # "받아졌는지 안 받아졌는지 헷갈림" 문제를 없앤다.
+    $beforeCommit = (git rev-parse --short HEAD 2>$null).Trim()
+
+    $hasLocalChanges = -not [string]::IsNullOrWhiteSpace((git status --porcelain))
+    if ($hasLocalChanges) {
+        Write-Host "  (로컬에 커밋되지 않은 변경사항이 있어 잠깐 보관해두고 받습니다...)" -ForegroundColor DarkGray
+        git stash push -m "run.bat 자동 보관 ($(Get-Date -Format 'yyyy-MM-dd HH:mm'))" | Out-Null
+    }
+
+    git pull
+
+    if ($hasLocalChanges) {
+        git stash pop
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "`n[알림] 아까 보관해둔 로컬 변경사항을 최신 코드 위에 자동으로 다시 합치지 못했습니다(내용이 겹치는 부분이 있는 것으로 보입니다)." -ForegroundColor Yellow
+            Write-Host "  'git status'로 어느 파일이 겹치는지 확인해 직접 정리해주세요. 보관해둔 내용은 사라지지 않고 'git stash list'에 남아있습니다." -ForegroundColor Yellow
+        }
+    }
+
+    $afterCommit = (git rev-parse --short HEAD 2>$null).Trim()
+    if ($beforeCommit -and $afterCommit -and $beforeCommit -ne $afterCommit) {
+        Write-Host "  업데이트됨: $beforeCommit -> $afterCommit" -ForegroundColor Green
+    } elseif ($afterCommit) {
+        Write-Host "  이미 최신 상태입니다 ($afterCommit)" -ForegroundColor DarkGray
+    }
+}
+
 function Start-Server {
     Set-Location $PSScriptRoot
 
     Write-Host "`n[1/3] 최신 코드 받는 중 (git pull)..." -ForegroundColor Cyan
-    git pull
+    Update-FromGit
 
     Write-Host "`n[2/3] 실행 환경 준비 중 (가상환경/패키지 확인)..." -ForegroundColor Cyan
     if (-not (Ensure-BackendReady)) {
