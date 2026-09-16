@@ -488,7 +488,7 @@ async function loadDashboard() {
   } catch (e) {
     toast(`대시보드 로드 실패: ${e.message}`, true);
   }
-  loadNewsBoard();
+  autoSyncNewsBoard();
 }
 
 // ---------- 안전보건 뉴스 게시판 ----------
@@ -532,6 +532,27 @@ async function loadNewsBoard() {
   } catch (e) {
     // 뉴스 게시판은 부가 기능이라, 실패해도 토스트로 화면 전체를 방해하지 않는다.
     document.getElementById("newsBoardTrack").innerHTML = "";
+  }
+}
+
+// 대시보드에 들어올 때마다(F5, 탭 전환, 새로고침 버튼 등) 우선 저장된
+// 최신 목록을 바로 보여준 뒤, 백그라운드에서 실제로 새 뉴스를 다시
+// 가져온다(스크랩). 짧은 시간 안에 반복 진입해도 매번 외부 뉴스
+// 사이트를 다시 부르지 않도록 최소 간격을 둔다.
+const NEWS_AUTO_SYNC_MIN_INTERVAL_MS = 60 * 1000;
+let newsLastAutoSyncAt = 0;
+
+async function autoSyncNewsBoard() {
+  loadNewsBoard();
+  const now = Date.now();
+  if (now - newsLastAutoSyncAt < NEWS_AUTO_SYNC_MIN_INTERVAL_MS) return;
+  newsLastAutoSyncAt = now;
+  try {
+    await api("/api/news/sync", { method: "POST" });
+    loadNewsBoard();
+  } catch (e) {
+    // 자동 새로고침 실패는 조용히 무시한다 - 필요하면 설정 탭의
+    // "지금 새로고침"으로 수동으로도 다시 시도할 수 있다.
   }
 }
 
