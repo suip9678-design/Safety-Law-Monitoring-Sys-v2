@@ -33,6 +33,7 @@ IMPORTANT - 이 세션은 data.go.kr에 직접 접근할 수 없어(조직 프�
 
 from __future__ import annotations
 
+import urllib.parse
 import xml.etree.ElementTree as ET
 from typing import Any
 
@@ -145,7 +146,16 @@ def _rows_from_xml(root: ET.Element) -> list[dict]:
 
 class KoshaGuideApiClient:
     def __init__(self, service_key: str, base_url: str, timeout: float = 15.0):
-        self.service_key = service_key
+        # 공공데이터포털은 인증키를 "Encoding"(이미 URL 퍼센트 인코딩된
+        # 형태, 예: 슬래시가 %2F로 표시됨)과 "Decoding"(원본 그대로) 두
+        # 가지로 제공한다. httpx는 params에 넣은 값을 URL에 실을 때 항상
+        # 다시 인코딩하므로, 사용자가 Encoding 키를 그대로 붙여넣으면
+        # "%2F" 안의 "%"까지 또 인코딩돼 "%252F"처럼 이중 인코딩되어
+        # 완전히 다른(무효한) 키로 서버에 전달된다 - 이게 실제로 "400
+        # Bad Request"의 원인이었다. 여기서 한 번 디코딩해두면, Encoding
+        # 키를 붙여넣든 Decoding 키를 붙여넣든 httpx가 그 원본을 정확히
+        # 한 번만 인코딩해서 보내므로 어느 쪽을 넣어도 항상 올바르게 동작한다.
+        self.service_key = urllib.parse.unquote(service_key)
         self.base_url = base_url
         self.timeout = timeout
 
