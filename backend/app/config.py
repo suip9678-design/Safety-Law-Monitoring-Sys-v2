@@ -29,6 +29,26 @@ class Settings:
     LAW_API_OC: str = os.getenv("LAW_API_OC", "").strip()
     DEMO_MODE: bool = LAW_API_OC == ""
 
+    # KOSHA 가이드(KOSHA GUIDE) 동기화용 공공데이터포털 "한국산업안전보건공단_
+    # 안전보건법령 스마트검색" Open API. 국가법령정보센터(LAW_API_OC)와는
+    # 완전히 별개의 키/엔드포인트다. 자세한 내용은 kosha_guide_api.py 상단
+    # 설명 참고 - 이 엔드포인트는 이 개발 환경에서 실제 응답으로 검증하지
+    # 못했다(data.go.kr 접근 차단됨). 사용자가 발급받은 활용신청 상세페이지의
+    # "요청 URL"이 이 기본값과 다르면 설정 화면에서 직접 바꿀 수 있다.
+    KOSHA_GUIDE_API_KEY: str = os.getenv("KOSHA_GUIDE_API_KEY", "").strip()
+    KOSHA_GUIDE_API_URL: str = os.getenv(
+        "KOSHA_GUIDE_API_URL",
+        "https://apis.data.go.kr/B552468/lawSmartSearchService/smartSearch",
+    ).strip()
+    # 스마트검색은 "전체 목록"이 아니라 키워드 검색 API라, 동기화할 때 이
+    # 키워드들로 차례로 검색해 그 결과 중 KOSHA GUIDE(기술지침)로 분류되는
+    # 것만 모은다. 신규 제정 고시 탐지(NEW_ADMRUL_KEYWORDS)와 같은 기본값을
+    # 써서 바로 동작하게 하되, 설정 화면에서 따로 바꿀 수 있다.
+    KOSHA_GUIDE_SYNC_KEYWORDS: str = os.getenv(
+        "KOSHA_GUIDE_SYNC_KEYWORDS",
+        "안전보건,산업안전,중대재해,위험성평가,유해위험,보건관리,안전관리",
+    ).strip()
+
     AUTO_SYNC_INTERVAL_HOURS: int = int(os.getenv("AUTO_SYNC_INTERVAL_HOURS", "24") or "0")
 
     # 신규 제정 고시 자동 탐지: 아직 등록 안 한 고시/예규/훈령 중, 소관부처가

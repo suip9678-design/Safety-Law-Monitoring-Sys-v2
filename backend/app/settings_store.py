@@ -13,6 +13,9 @@ from .config import settings as env_settings
 
 _KEYS = [
     "law_api_oc",
+    "kosha_guide_api_key",
+    "kosha_guide_api_url",
+    "kosha_guide_sync_keywords",
     "smtp_host",
     "smtp_port",
     "smtp_use_tls",
@@ -33,6 +36,9 @@ _KEYS = [
 
 _ENV_DEFAULTS = {
     "law_api_oc": env_settings.LAW_API_OC,
+    "kosha_guide_api_key": env_settings.KOSHA_GUIDE_API_KEY,
+    "kosha_guide_api_url": env_settings.KOSHA_GUIDE_API_URL,
+    "kosha_guide_sync_keywords": env_settings.KOSHA_GUIDE_SYNC_KEYWORDS,
     "smtp_host": env_settings.SMTP_HOST,
     "smtp_port": str(env_settings.SMTP_PORT),
     "smtp_use_tls": "true" if env_settings.SMTP_USE_TLS else "false",

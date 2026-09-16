@@ -1310,6 +1310,32 @@ function parseKoshaGuideBulkInput(text) {
     .filter((item) => item.title);
 }
 
+function initKoshaGuideSync() {
+  document.getElementById("koshaGuideSyncBtn").addEventListener("click", async () => {
+    const btn = document.getElementById("koshaGuideSyncBtn");
+    const statusEl = document.getElementById("koshaGuideSyncStatus");
+    btn.disabled = true;
+    btn.textContent = "동기화 중...";
+    statusEl.textContent = "";
+    try {
+      const result = await api("/api/kosha-guides/sync", { method: "POST" });
+      let msg = `동기화 완료: 키워드 ${result.keywords_checked.length}개 확인, 찾음 ${result.found}건 (추가 ${result.added}건, 갱신 ${result.updated}건)`;
+      if (result.errors.length) {
+        msg += ` — 오류 ${result.errors.length}건: ${result.errors[0]}`;
+      }
+      statusEl.textContent = msg;
+      toast(result.errors.length ? `동기화 일부 실패 (${result.errors.length}건 오류)` : "동기화 완료했습니다.", result.errors.length > 0);
+      loadKoshaGuides();
+    } catch (e) {
+      statusEl.textContent = `동기화 실패: ${e.message}`;
+      toast(`동기화 실패: ${e.message} — 설정 > KOSHA 가이드 Open API에서 인증키/요청 URL을 확인하세요.`, true);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "API로 동기화";
+    }
+  });
+}
+
 function initKoshaGuideBulkImport() {
   document.getElementById("koshaGuideBulkImportBtn").addEventListener("click", async () => {
     const raw = document.getElementById("koshaGuideBulkInput").value;
@@ -1677,6 +1703,13 @@ async function loadSettings() {
       ? "OC 키가 설정되지 않아 데모 데이터로 동작 중입니다."
       : `현재 동기화된 OC 키: ${s.law_api_oc} (실제 국가법령정보센터 API로 동작 중)`;
 
+    document.getElementById("koshaGuideApiKey").value = s.kosha_guide_api_key || "";
+    document.getElementById("koshaGuideApiUrl").value = s.kosha_guide_api_url || "";
+    document.getElementById("koshaGuideSyncKeywords").value = s.kosha_guide_sync_keywords || "";
+    document.getElementById("koshaGuideApiStatus").textContent = s.kosha_guide_api_key_set
+      ? "인증키가 저장되어 있습니다. KOSHA 가이드 탭에서 \"API로 동기화\"를 눌러보세요."
+      : "아직 인증키가 없습니다. 키를 저장하면 KOSHA 가이드 탭에서 자동 동기화를 쓸 수 있습니다.";
+
     document.getElementById("smtpPanel").hidden = !s.email_feature_enabled;
     if (s.email_feature_enabled) {
       document.getElementById("smtpHost").value = s.smtp_host || "";
@@ -1795,6 +1828,26 @@ function initSettingsForms() {
       loadSettings();
     } catch (e) {
       toast(`저장 실패: ${e.message}`, true);
+    }
+  });
+
+  document.getElementById("koshaGuideApiForm").addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    const payload = {
+      kosha_guide_api_key: document.getElementById("koshaGuideApiKey").value,
+      kosha_guide_api_url: document.getElementById("koshaGuideApiUrl").value,
+      kosha_guide_sync_keywords: document.getElementById("koshaGuideSyncKeywords").value,
+    };
+    const btn = ev.target.querySelector('button[type="submit"]');
+    btn.disabled = true;
+    try {
+      await api("/api/settings", { method: "PUT", body: JSON.stringify(payload) });
+      toast("KOSHA 가이드 Open API 설정을 저장했습니다.");
+      loadSettings();
+    } catch (e) {
+      toast(`저장 실패: ${e.message}`, true);
+    } finally {
+      btn.disabled = false;
     }
   });
 
@@ -1978,6 +2031,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initDocumentForm();
   initKoshaGuideForm();
   initKoshaGuideSearch();
+  initKoshaGuideSync();
   initKoshaGuideBulkImport();
   initSettingsForms();
   initDismissedAdmrulPanel();

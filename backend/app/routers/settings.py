@@ -25,6 +25,10 @@ def get_settings(db: Session = Depends(get_db)):
         demo_mode=not bool(values.get("law_api_oc")),
         law_api_oc_set=bool(values.get("law_api_oc")),
         law_api_oc=values.get("law_api_oc") or None,
+        kosha_guide_api_key_set=bool(values.get("kosha_guide_api_key")),
+        kosha_guide_api_key=values.get("kosha_guide_api_key") or None,
+        kosha_guide_api_url=values.get("kosha_guide_api_url") or None,
+        kosha_guide_sync_keywords=values.get("kosha_guide_sync_keywords") or None,
         auto_sync_interval_hours=env_settings.AUTO_SYNC_INTERVAL_HOURS,
         smtp_configured=smtp_configured,
         smtp_host=values.get("smtp_host") or None,
@@ -51,6 +55,12 @@ def update_settings(payload: schemas.SettingsUpdate, db: Session = Depends(get_d
     updates = {}
     if payload.law_api_oc is not None:
         updates["law_api_oc"] = payload.law_api_oc
+    if payload.kosha_guide_api_key is not None:
+        updates["kosha_guide_api_key"] = payload.kosha_guide_api_key
+    if payload.kosha_guide_api_url is not None:
+        updates["kosha_guide_api_url"] = payload.kosha_guide_api_url
+    if payload.kosha_guide_sync_keywords is not None:
+        updates["kosha_guide_sync_keywords"] = payload.kosha_guide_sync_keywords
     if payload.smtp_host is not None:
         updates["smtp_host"] = payload.smtp_host
     if payload.smtp_port is not None:

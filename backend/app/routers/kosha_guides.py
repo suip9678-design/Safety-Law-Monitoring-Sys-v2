@@ -7,8 +7,9 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
-from .. import models, schemas
+from .. import models, schemas, settings_store
 from ..database import get_db
+from ..kosha_guide_api import KoshaGuideApiError, build_client
 
 router = APIRouter(prefix="/api/kosha-guides", tags=["kosha-guides"])
 
@@ -133,6 +134,28 @@ def delete_guide(guide_id: int, db: Session = Depends(get_db)):
     return None
 
 
+def _upsert(db: Session, code: str | None, field: str | None, title: str, issued_date: str | None,
+            file_link: str | None, content: str | None = None) -> str:
+    """지침번호(code)가 있고 이미 등록된 것과 같으면 덮어쓰고("updated"),
+    아니면 새로 추가한다("added"). bulk-import와 sync가 함께 쓴다."""
+    existing = db.query(models.KoshaGuide).filter(models.KoshaGuide.code == code).first() if code else None
+    if existing:
+        existing.field = field
+        existing.title = title
+        existing.issued_date = issued_date
+        existing.file_link = file_link
+        if content:
+            existing.content = content
+        return "updated"
+    db.add(
+        models.KoshaGuide(
+            code=code, field=field, title=title, issued_date=issued_date, file_link=file_link,
+            content=content,
+        )
+    )
+    return "added"
+
+
 @router.post("/bulk-import", response_model=schemas.KoshaGuideBulkImportResult)
 def bulk_import(payload: schemas.KoshaGuideBulkImportItems, db: Session = Depends(get_db)):
     """붙여넣기로 여러 건을 한 번에 등록한다. 지침번호(code)가 있고 이미
@@ -144,29 +167,71 @@ def bulk_import(payload: schemas.KoshaGuideBulkImportItems, db: Session = Depend
         if not title:
             skipped += 1
             continue
-        code = _clean(item.code)
-        existing = (
-            db.query(models.KoshaGuide).filter(models.KoshaGuide.code == code).first() if code else None
+        outcome = _upsert(
+            db, _clean(item.code), _clean(item.field), title, _clean(item.issued_date),
+            _clean(item.file_link), item.content or None,
         )
-        if existing:
-            existing.field = _clean(item.field)
-            existing.title = title
-            existing.issued_date = _clean(item.issued_date)
-            existing.file_link = _clean(item.file_link)
-            if item.content:
-                existing.content = item.content
+        if outcome == "updated":
             updated += 1
         else:
-            db.add(
-                models.KoshaGuide(
-                    code=code,
-                    field=_clean(item.field),
-                    title=title,
-                    issued_date=_clean(item.issued_date),
-                    file_link=_clean(item.file_link),
-                    content=item.content or None,
-                )
-            )
             added += 1
     db.commit()
     return schemas.KoshaGuideBulkImportResult(added=added, updated=updated, skipped=skipped)
+
+
+@router.post("/sync", response_model=schemas.KoshaGuideSyncResult)
+def sync_from_api(db: Session = Depends(get_db)):
+    """설정에 저장해둔 공공데이터포털 인증키로, 설정에 등록한 키워드들을
+    차례로 스마트검색해서 KOSHA GUIDE로 분류되는 결과만 등록/갱신한다.
+
+    이 API의 정확한 엔드포인트/응답 구조를 이 개발 환경에서 검증하지
+    못했으므로(kosha_guide_api.py 상단 설명 참고), 실패하면 원인을 그대로
+    반환한다 - 화면에서 "요청 URL이 맞는지 확인"하라는 안내와 함께 보인다."""
+    values = settings_store.get_all(db)
+    service_key = values.get("kosha_guide_api_key", "").strip()
+    if not service_key:
+        raise HTTPException(status_code=400, detail="설정에서 KOSHA 가이드 Open API 인증키를 먼저 저장하세요.")
+    base_url = values.get("kosha_guide_api_url", "").strip()
+    if not base_url:
+        raise HTTPException(status_code=400, detail="설정에서 KOSHA 가이드 Open API 요청 URL을 먼저 저장하세요.")
+    keywords = [k.strip() for k in values.get("kosha_guide_sync_keywords", "").split(",") if k.strip()]
+    if not keywords:
+        raise HTTPException(status_code=400, detail="설정에서 검색 키워드를 하나 이상 등록하세요.")
+
+    client = build_client(service_key, base_url)
+    found = added = updated = 0
+    errors: list[str] = []
+    seen_in_this_run: set[tuple[str | None, str]] = set()
+
+    for keyword in keywords:
+        try:
+            results = client.search(keyword)
+        except KoshaGuideApiError as exc:
+            errors.append(f"'{keyword}': {exc}")
+            continue
+        for item in results:
+            title = (item.get("title") or "").strip()
+            if not title:
+                continue
+            code = _clean(item.get("code"))
+            # 같은 실행 안에서 여러 키워드가 같은 가이드를 함께 찾아내는
+            # 경우가 흔한데(예: "안전보건"과 "위험성평가" 둘 다 걸리는
+            # 지침), (코드, 제목) 기준으로 한 번만 세도록 한다 - 지침번호가
+            # 없는 항목은 제목만으로 가려낸다.
+            dedup_key = (code, title)
+            if dedup_key in seen_in_this_run:
+                continue
+            seen_in_this_run.add(dedup_key)
+            found += 1
+            outcome = _upsert(
+                db, code, _clean(item.get("field")), title,
+                _clean(item.get("issued_date")), _clean(item.get("file_link")),
+            )
+            if outcome == "updated":
+                updated += 1
+            else:
+                added += 1
+    db.commit()
+    return schemas.KoshaGuideSyncResult(
+        keywords_checked=keywords, found=found, added=added, updated=updated, errors=errors,
+    )
