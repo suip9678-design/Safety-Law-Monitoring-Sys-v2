@@ -24,7 +24,7 @@ _KEYS = [
     "news_source_moel_url",
     "news_source_kosha_url",
     "news_source_accident_url",
-    "news_max_items_per_category",
+    "news_retention_days",
 ]
 
 _ENV_DEFAULTS = {
@@ -40,7 +40,7 @@ _ENV_DEFAULTS = {
     "news_source_moel_url": env_settings.NEWS_SOURCE_MOEL_URL,
     "news_source_kosha_url": env_settings.NEWS_SOURCE_KOSHA_URL,
     "news_source_accident_url": env_settings.NEWS_SOURCE_ACCIDENT_URL,
-    "news_max_items_per_category": str(env_settings.NEWS_MAX_ITEMS_PER_CATEGORY),
+    "news_retention_days": str(env_settings.NEWS_RETENTION_DAYS),
 }
 
 

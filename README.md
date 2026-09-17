@@ -66,6 +66,31 @@
 - 프론트엔드: 별도 빌드 과정 없는 순수 HTML/CSS/JS (백엔드가 정적 파일로 서빙)
 - 데이터 소스: [국가법령정보센터 Open API](https://open.law.go.kr) (`target=law` 법령, `target=admrul` 행정규칙/고시)
 
+## 파이썬 없이 화면만 먼저 확인하기 (오프라인 데모 모드)
+
+백엔드(Python/FastAPI)를 아직 설치하지 않았거나 Python이 아예 없는 환경에서도, `frontend/` 폴더만으로
+화면 구성과 동작을 미리 확인할 수 있습니다.
+
+- `frontend/` 폴더를 Python 없이도 되는 아무 정적 파일 서버로 띄우면 됩니다. 예)
+  `npx serve frontend`, `python3 -m http.server 8080`(이 파이썬은 표준 라이브러리만 쓰는 것이라
+  FastAPI 등 이 프로젝트의 의존성 설치와 무관합니다), VS Code의 Live Server 확장 등.
+  **주의**: `index.html`을 더블클릭해 `file://`로 직접 열면 동작하지 않습니다 - 화면이 여러 개의
+  ES 모듈(`frontend/js/*.js`)로 나뉘어 있는데, 브라우저가 보안상 `file://`에서는 모듈 간
+  import를 막기 때문입니다(정적 서버로 띄우면, 즉 주소가 `http://localhost:...`로 시작하면
+  문제없이 동작합니다).
+- 페이지가 열리면 `frontend/demo-mode.js`가 실제 백엔드(`/api/health`)가 있는지 한 번 확인합니다.
+  - 백엔드가 있으면(정상적으로 `run.bat`/`uvicorn`으로 띄운 경우) 이 스크립트는 완전히 무해하며 아무 일도
+    하지 않습니다 - 평소와 동일하게 동작합니다.
+  - 백엔드가 없으면 그때부터 모든 `/api/...` 요청을 가로채 브라우저 메모리 속 가짜 데이터(법령 5건,
+    개정 이력 3건, 사규 2건, KOSHA 가이드 2건, 뉴스 9건 등)로 응답해, 대시보드/법령 마스터/개정 이력/
+    KOSHA 가이드/사규/안전보건 뉴스 등 모든 탭을 실제로 눌러보고 등록·삭제·상태변경 같은 상호작용까지
+    확인할 수 있습니다.
+  - 상단 배지가 "데모 모드 (오프라인)"로 바뀌어 있으면 이 모드로 동작 중이라는 뜻입니다. 데이터는 이
+    브라우저 탭 메모리에만 있고 새로고침하면 초기 상태로 되돌아갑니다 - 확인용이지 실제 운영 데이터가
+    아닙니다.
+- 실제로 법령을 추적하는 등 제대로 쓰려면 아래 "시작하기"대로 Python 백엔드를 설치해야 합니다. 이
+  오프라인 데모는 그 전에 화면만 미리 보는 용도입니다.
+
 ## 시작하기
 
 ### 1) 국가법령정보센터 Open API 키(OC) 발급 (선택, 권장)
@@ -163,7 +188,17 @@ Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
   실제 데이터가 들어오기 시작하면 예시 항목은 자동으로 정리됩니다.
 - 상단 필터(전체/고용노동부/안전보건공단/중대재해 뉴스)로 좁혀볼 수 있고, 항목을 클릭하면 새 탭으로
   원문이 열립니다. 마우스를 올리면 자동 스크롤이 멈춥니다.
-- 설정 탭에서 게시판 표시 여부, 카테고리별 최대 보관 건수도 함께 조절할 수 있습니다.
+- 설정 탭에서 게시판 표시 여부, 보관 기간을 함께 조절할 수 있습니다.
+- **보관 정책**: 뉴스 1건은 URL/제목 정도라 용량이 작지만(건당 1KB 미만) 무한정 쌓아둘 필요는 없어,
+  발행일(`published_at`, 없으면 `fetched_at`) 기준 **보관 기간**(설정 탭 `.env`의 `NEWS_RETENTION_DAYS`,
+  기본 180일 = 6개월)이 지나면 자동 삭제됩니다. 계속 남겨두고 싶은 기사는 "안전보건 뉴스" 탭에서
+  **"보관"** 처리해두면(`NewsItem.is_archived`) 기간이 지나도 삭제되지 않고, "보관함만 보기"로 모아볼
+  수 있습니다. (혹시 모를 피드 오설정으로 한 카테고리에 비정상적으로 많이 쌓이는 경우에 대비해, 보관
+  처리 안 된 항목은 카테고리당 5,000건을 넘으면 오래된 것부터 정리되는 안전장치도 있습니다.)
+- **안전보건 뉴스 탭(별도 페이지)**: 대시보드와 법령 마스터 사이에 있는 전용 탭(또는 게시판의
+  "전체보기 · 검색" 버튼)에서 카테고리·제목 키워드·날짜 범위(시작일/종료일)로 뉴스를 검색하고,
+  각 항목을 보관/보관 해제할 수 있습니다. 검색 가능한 기간은 위 보관 기간만큼으로 한정됩니다 -
+  더 오래된 기사까지 찾으려면 그 값을 늘려두세요.
 
 ## 프로젝트 구조
 
@@ -184,11 +219,14 @@ backend/
     routers/               API 라우터 (laws, revisions, documents, mappings, sync, settings, dashboard, news, kosha_guides)
 frontend/
   index.html / style.css   대시보드 UI (빌드 불필요)
+  demo-mode.js            오프라인 데모 모드 (백엔드 없을 때 /api/* 요청을 가로채 가짜 데이터로 응답)
   js/                     화면별 ES 모듈 (main.js가 진입점, <script type="module">로 로드)
     core.js                공통 상태 + API 호출/토스트/날짜포맷 등 기본 헬퍼
     tabs.js                탭 전환 라우팅
-    dashboard.js / laws.js / revisions.js / doc-revisions.js / documents.js / settings.js / news.js / keyword-search.js / kosha-guide.js
+    dashboard.js / laws.js / revisions.js / doc-revisions.js / documents.js / settings.js
+    news.js / news-page.js / keyword-search.js / kosha-guide.js
                             탭(화면)별 로직 - 각각 loadX()/initXTab() 형태로 진입점 제공
+                            (news.js = 대시보드 뉴스 게시판 위젯, news-page.js = 별도 "안전보건 뉴스" 검색 탭)
     document-impacts.js    "문서 기준 개정 필요 사항" 표 렌더링 (대시보드/사규 개정 이력 공용)
     status-actions.js      개정 상태 변경 드롭다운 공통 배선
     alarm.js / help.js / sync.js   알림 종 / 도움말 모달 / 새로고침(동기화) 버튼

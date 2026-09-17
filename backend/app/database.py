@@ -45,3 +45,9 @@ def ensure_columns():
                 conn.execute(
                     text("ALTER TABLE scraped_law_contents ADD COLUMN article_content_len INTEGER DEFAULT 0")
                 )
+
+    if "news_items" in inspector.get_table_names():
+        news_columns = {c["name"] for c in inspector.get_columns("news_items")}
+        if "is_archived" not in news_columns:
+            with engine.begin() as conn:
+                conn.execute(text("ALTER TABLE news_items ADD COLUMN is_archived BOOLEAN DEFAULT 0"))

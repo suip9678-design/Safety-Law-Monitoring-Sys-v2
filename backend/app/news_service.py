@@ -19,6 +19,7 @@ import logging
 import xml.etree.ElementTree as ET
 
 import httpx
+from sqlalchemy import func
 
 from . import fixtures, models
 
@@ -105,7 +106,14 @@ def configured_sources(db) -> list[tuple[str, str, str]]:
     ]
 
 
-def sync_news(db, sources: list[tuple[str, str, str]], max_items_per_category: int) -> int:
+# 보관(is_archived) 처리를 해두지 않아도, RSS 주소를 잘못 설정해 한 카테고리에
+# 비정상적으로 많은 항목이 몰리는 경우까지 대비한 안전장치. 사용자가 직접
+# 조절하는 값이 아니라(보관 기간 설정과는 별개), 디스크가 무한정 커지는 걸
+# 막기 위한 최후의 상한선이라 넉넉하게 잡아둔다.
+_HARD_CAP_PER_CATEGORY = 5000
+
+
+def sync_news(db, sources: list[tuple[str, str, str]], retention_days: int) -> int:
     """각 소스를 가져와 새 항목만 저장한다. 돌려주는 값은 신규 저장 건수.
 
     실제 피드가 비어 있으면(네트워크 차단, 주소 미설정 등) 화면이 텅 비어
@@ -144,17 +152,35 @@ def sync_news(db, sources: list[tuple[str, str, str]], max_items_per_category: i
             added += 1
     db.commit()
 
-    # 소스별로 최신 max_items_per_category건만 남기고 오래된 것은 정리한다.
+    # 발행일(published_at, 없으면 fetched_at) 기준으로 보관 기간이 지난
+    # 항목은 삭제한다 - 단, "보관" 처리(is_archived)해둔 항목은 기간이
+    # 지나도 남겨둔다.
+    order_col = func.coalesce(models.NewsItem.published_at, models.NewsItem.fetched_at)
+    cutoff = datetime.datetime.utcnow() - datetime.timedelta(days=max(retention_days, 1))
     for category, _source_name, _url in sources:
         stale_ids = [
             row.id
             for row in db.query(models.NewsItem.id)
-            .filter(models.NewsItem.category == category)
-            .order_by(models.NewsItem.fetched_at.desc())
-            .offset(max_items_per_category)
+            .filter(
+                models.NewsItem.category == category,
+                models.NewsItem.is_archived.is_(False),
+                order_col < cutoff,
+            )
             .all()
         ]
         if stale_ids:
             db.query(models.NewsItem).filter(models.NewsItem.id.in_(stale_ids)).delete(synchronize_session=False)
+
+        # 안전장치: 보관 기간 안에 있어도 비정상적으로 많이 쌓였다면 오래된 것부터 정리.
+        overflow_ids = [
+            row.id
+            for row in db.query(models.NewsItem.id)
+            .filter(models.NewsItem.category == category, models.NewsItem.is_archived.is_(False))
+            .order_by(order_col.desc())
+            .offset(_HARD_CAP_PER_CATEGORY)
+            .all()
+        ]
+        if overflow_ids:
+            db.query(models.NewsItem).filter(models.NewsItem.id.in_(overflow_ids)).delete(synchronize_session=False)
     db.commit()
     return added

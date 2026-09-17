@@ -234,7 +234,7 @@ class SettingsOut(BaseModel):
     news_source_moel_url: str | None = None
     news_source_kosha_url: str | None = None
     news_source_accident_url: str | None = None
-    news_max_items_per_category: int = 30
+    news_retention_days: int = 180
 
 
 class SettingsUpdate(BaseModel):
@@ -250,7 +250,7 @@ class SettingsUpdate(BaseModel):
     news_source_moel_url: str | None = None
     news_source_kosha_url: str | None = None
     news_source_accident_url: str | None = None
-    news_max_items_per_category: int | None = None
+    news_retention_days: int | None = None
 
 
 class SyncResult(BaseModel):
@@ -289,6 +289,18 @@ class NewsItemOut(BaseModel):
     published_at: UtcDateTimeOpt = None
     fetched_at: UtcDateTime
     is_demo: bool = False
+    is_archived: bool = False
+
+
+class NewsSearchResult(BaseModel):
+    items: list[NewsItemOut]
+    # 필터 조건에 맞는 전체 건수(응답에 담긴 items가 limit에 걸려 잘렸어도
+    # 실제로는 몇 건이 있는지 화면에서 알려줄 수 있도록).
+    total: int
+
+
+class NewsArchiveUpdate(BaseModel):
+    is_archived: bool
 
 
 class DocumentImpactOut(BaseModel):

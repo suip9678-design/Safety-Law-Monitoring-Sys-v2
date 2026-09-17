@@ -6,7 +6,7 @@ import { api, toast, escapeHtml, fmtDate, fmtDateTime } from "./core.js";
 import { renderDocumentImpactsList } from "./document-impacts.js";
 import { wireStatusSelects } from "./status-actions.js";
 import { updateAlarmBell } from "./alarm.js";
-import { loadNewsBoard } from "./news.js";
+import { loadNewsBoard, refreshNewsBoardInBackground } from "./news.js";
 import { renderRevisionsList } from "./revisions.js";
 import { loadLaws } from "./laws.js";
 
@@ -117,4 +117,5 @@ export async function loadDashboard() {
     toast(`대시보드 로드 실패: ${e.message}`, true);
   }
   loadNewsBoard();
+  refreshNewsBoardInBackground();
 }

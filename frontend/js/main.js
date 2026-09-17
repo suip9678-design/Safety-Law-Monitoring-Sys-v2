@@ -14,6 +14,7 @@ import { initAlarmBell } from "./alarm.js";
 import { initHelpModal } from "./help.js";
 import { initKeywordSearch } from "./keyword-search.js";
 import { initNewsBoard } from "./news.js";
+import { initNewsPage } from "./news-page.js";
 import { loadDashboard } from "./dashboard.js";
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -32,6 +33,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initHelpModal();
   initKeywordSearch();
   initNewsBoard();
+  initNewsPage();
 
   loadDashboard();
   api("/api/health").then((h) => { document.getElementById("demoBadge").hidden = !h.demo_mode; }).catch(() => {});

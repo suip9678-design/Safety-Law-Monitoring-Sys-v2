@@ -186,7 +186,7 @@ export async function loadSettings() {
     document.getElementById("newsSourceMoelUrl").value = s.news_source_moel_url || "";
     document.getElementById("newsSourceKoshaUrl").value = s.news_source_kosha_url || "";
     document.getElementById("newsSourceAccidentUrl").value = s.news_source_accident_url || "";
-    document.getElementById("newsMaxItems").value = s.news_max_items_per_category || 30;
+    document.getElementById("newsRetentionDays").value = s.news_retention_days || 180;
   } catch (e) {
     toast(`설정 로드 실패: ${e.message}`, true);
   }
@@ -359,7 +359,7 @@ export function initSettingsForms() {
       news_source_moel_url: document.getElementById("newsSourceMoelUrl").value,
       news_source_kosha_url: document.getElementById("newsSourceKoshaUrl").value,
       news_source_accident_url: document.getElementById("newsSourceAccidentUrl").value,
-      news_max_items_per_category: Number(document.getElementById("newsMaxItems").value) || 30,
+      news_retention_days: Number(document.getElementById("newsRetentionDays").value) || 180,
     };
     const btn = ev.target.querySelector('button[type="submit"]');
     btn.disabled = true;

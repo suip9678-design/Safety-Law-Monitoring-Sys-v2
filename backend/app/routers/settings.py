@@ -36,7 +36,7 @@ def get_settings(db: Session = Depends(get_db)):
         news_source_moel_url=values.get("news_source_moel_url") or None,
         news_source_kosha_url=values.get("news_source_kosha_url") or None,
         news_source_accident_url=values.get("news_source_accident_url") or None,
-        news_max_items_per_category=int(values.get("news_max_items_per_category") or 30),
+        news_retention_days=int(values.get("news_retention_days") or 180),
     )
 
 
@@ -67,8 +67,8 @@ def update_settings(payload: schemas.SettingsUpdate, db: Session = Depends(get_d
         updates["news_source_kosha_url"] = payload.news_source_kosha_url
     if payload.news_source_accident_url is not None:
         updates["news_source_accident_url"] = payload.news_source_accident_url
-    if payload.news_max_items_per_category is not None:
-        updates["news_max_items_per_category"] = str(payload.news_max_items_per_category)
+    if payload.news_retention_days is not None:
+        updates["news_retention_days"] = str(payload.news_retention_days)
 
     settings_store.set_values(db, updates)
     return get_settings(db)

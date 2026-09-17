@@ -1,6 +1,8 @@
 // 대시보드 상단 안전보건 뉴스 자동 스크롤 게시판.
 
 import { api, escapeHtml } from "./core.js";
+import { activateTab } from "./tabs.js";
+import { loadNewsPage } from "./news-page.js";
 
 const newsBoardState = { category: "", scrollTimer: null, paused: false };
 
@@ -8,7 +10,9 @@ function fmtNewsDate(iso) {
   if (!iso) return "";
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "";
-  return d.toLocaleDateString("ko-KR", { month: "2-digit", day: "2-digit" });
+  const datePart = d.toLocaleDateString("ko-KR", { month: "2-digit", day: "2-digit" });
+  const timePart = d.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", hour12: false });
+  return `${datePart} ${timePart}`;
 }
 
 function renderNewsBoard(items) {
@@ -42,6 +46,31 @@ export async function loadNewsBoard() {
   }
 }
 
+// 뉴스 게시판은 주기 수집(기본 3시간)에 맞춰서만 갱신되므로, 대시보드에 들어올
+// 때마다(최초 진입, F5, 다른 브라우저 탭을 보다가 돌아오는 경우) 화면은 일단
+// 캐시된 목록으로 먼저 채우고 뒤에서 조용히 재스크랩한 뒤 목록만 다시 채운다.
+// 실패해도(네트워크 차단 등) 캐시된 내용을 그대로 보여주면 되므로 토스트 없이
+// 무시한다. 짧은 시간에 탭을 여러 번 들락거려도 매번 스크랩하지 않도록
+// 최소 간격을 둔다.
+const NEWS_BG_SYNC_MIN_INTERVAL_MS = 60_000;
+let newsBackgroundSyncing = false;
+let lastNewsBgSyncAt = 0;
+
+export async function refreshNewsBoardInBackground() {
+  const now = Date.now();
+  if (newsBackgroundSyncing || now - lastNewsBgSyncAt < NEWS_BG_SYNC_MIN_INTERVAL_MS) return;
+  newsBackgroundSyncing = true;
+  lastNewsBgSyncAt = now;
+  try {
+    await api("/api/news/sync", { method: "POST" });
+    await loadNewsBoard();
+  } catch (e) {
+    /* 무시 - 다음 주기 수집이나 수동 새로고침으로 대체된다. */
+  } finally {
+    newsBackgroundSyncing = false;
+  }
+}
+
 // CSS 애니메이션 대신 scrollTop을 일정 간격으로 올려 "게시판처럼" 계속
 // 흐르게 한다 - 항목 개수가 바뀌어도(내용 높이가 매번 달라짐) 별도 계산
 // 없이 항상 자연스럽게 동작한다. 끝까지 스크롤되면 처음으로 되돌아간다.
@@ -72,4 +101,8 @@ export function initNewsBoard() {
     });
   });
   startNewsAutoScroll();
+  document.getElementById("goToNewsPageBtn").addEventListener("click", () => {
+    activateTab("news");
+    loadNewsPage();
+  });
 }

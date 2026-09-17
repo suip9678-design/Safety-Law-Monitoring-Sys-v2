@@ -4,14 +4,14 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>안전보건 법령·고시 Monitoring</title>
-  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/pretendard/1.3.9/static/pretendard-dynamic-subset.min.css" />
-  <link rel="stylesheet" href="/style.css" />
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <header class="topbar">
     <div class="topbar-brand">
-      <img src="/favicon.svg" alt="" class="topbar-logo" />
+      <img src="favicon.svg" alt="" class="topbar-logo" />
       <h1>안전보건 법령·고시 Monitoring</h1>
     </div>
     <div class="topbar-actions">
@@ -27,6 +27,7 @@
 
   <nav class="tabs">
     <button class="tab-btn active" data-tab="dashboard">대시보드</button>
+    <button class="tab-btn" data-tab="news">안전보건 뉴스</button>
     <button class="tab-btn" data-tab="laws">법령 마스터</button>
     <button class="tab-btn" data-tab="revisions">개정 이력</button>
     <button class="tab-btn" data-tab="kosha-guides">KOSHA 가이드</button>
@@ -52,6 +53,7 @@
         <div class="news-board-header">
           <h2>안전보건 이슈 · 중대재해 뉴스</h2>
           <span id="newsDemoBadge" class="badge badge-warn" hidden title="실제 뉴스를 아직 못 가져와 예시 데이터로 채워져 있습니다">예시 데이터</span>
+          <button type="button" id="goToNewsPageBtn" class="btn" style="margin-left: auto;">전체보기 · 검색</button>
         </div>
         <p class="hint">고용노동부·안전보건공단 안전보건 이슈, 중대재해 관련 뉴스를 자동으로 모아 게시판처럼 스크롤로 보여줍니다. 항목을 클릭하면 원문으로 이동하고, 마우스를 올리면 스크롤이 멈춥니다.</p>
         <div class="row news-board-filters" id="newsCategoryFilters">
@@ -76,6 +78,38 @@
       <h2>사내 절차서·지침서 개정 필요 사항</h2>
       <p class="hint">근거 법령이 개정되어 아직 검토/반영되지 않은 절차서·지침서만 문서 기준으로 모아서 보여줍니다. (근거 법령 매핑 또는 키워드(해시태그) 자동 매칭 필요)</p>
       <div id="recentDocImpacts" class="table-wrap"></div>
+    </section>
+
+    <section id="tab-news" class="tab-panel">
+      <div class="panel-box">
+        <div class="row" style="justify-content: space-between; margin-bottom: 0;">
+          <h2 style="margin: 0;">안전보건 이슈 · 중대재해 뉴스</h2>
+          <span id="newsPageDemoBadge" class="badge badge-warn" hidden title="실제 뉴스를 아직 못 가져와 예시 데이터로 채워져 있습니다">예시 데이터</span>
+        </div>
+        <p class="hint">
+          고용노동부·안전보건공단 안전보건 이슈, 중대재해 관련 뉴스를 카테고리·키워드·날짜로 검색합니다.
+          최근 뉴스만 훑어보려면 대시보드 상단의 자동 스크롤 게시판을 이용하고, 예전 기사를 찾거나 특정 기간의
+          사고 소식을 모아보려면 여기서 검색하세요. 뉴스는 발행일 기준 설정 &gt; 안전보건 뉴스 게시판의
+          <b>"보관 기간"</b>(기본 6개월)이 지나면 자동 삭제되므로 그보다 오래된 기사는 나오지 않습니다 — 계속 남겨두고
+          싶은 기사는 목록에서 <b>"보관"</b>을 눌러두면 기간이 지나도 삭제되지 않습니다.
+        </p>
+        <div class="row news-board-filters" id="newsPageCategoryFilters">
+          <button type="button" class="news-filter-btn active" data-cat="">전체</button>
+          <button type="button" class="news-filter-btn" data-cat="moel">고용노동부</button>
+          <button type="button" class="news-filter-btn" data-cat="kosha">안전보건공단</button>
+          <button type="button" class="news-filter-btn" data-cat="accident">중대재해 뉴스</button>
+        </div>
+        <form id="newsPageSearchForm" class="row">
+          <input id="newsPageQueryInput" type="text" placeholder="제목으로 검색 (예: 중대재해, 추락)" style="flex: 1; min-width: 200px;" />
+          <label>시작일 <input id="newsPageDateFrom" type="date" /></label>
+          <label>종료일 <input id="newsPageDateTo" type="date" /></label>
+          <label><input type="checkbox" id="newsPageArchivedOnly" /> 보관함만 보기</label>
+          <button type="submit" class="btn btn-primary">검색</button>
+          <button type="button" id="newsPageResetBtn" class="btn">초기화</button>
+        </form>
+        <p id="newsPageSearchStatus" class="hint"></p>
+        <div id="newsPageResults" class="table-wrap"></div>
+      </div>
     </section>
 
     <section id="tab-laws" class="tab-panel">
@@ -314,6 +348,7 @@
           <a href="#help-start">처음 시작하기</a>
           <a href="#help-security">보안/개인정보</a>
           <a href="#help-dashboard">대시보드</a>
+          <a href="#help-news">안전보건 뉴스</a>
           <a href="#help-laws">법령 마스터</a>
           <a href="#help-revisions">개정 이력</a>
           <a href="#help-kosha-guides">KOSHA 가이드</a>
@@ -353,6 +388,17 @@
               <li>목록이 길어지면 표 안에서만 스크롤됩니다 — 계속 등록/무시를 눌러도 페이지 전체가 늘어지지 않습니다.</li>
               <li>우측 상단의 종 모양 알림(🔔)은 아직 검토하지 않은 개정 건수를 보여주며, 클릭하면 확인 처리됩니다.</li>
             </ul>
+          </section>
+
+          <section id="help-news">
+            <h3>안전보건 뉴스</h3>
+            <p>대시보드 게시판(자동 스크롤)과 같은 데이터를 대상으로, 별도 화면에서 카테고리·키워드(제목)·날짜 범위로 검색합니다.
+            "전체보기 · 검색" 버튼(대시보드 게시판 우측)이나 상단 탭에서 들어갈 수 있습니다. 뉴스는 발행일 기준 설정 &gt; 안전보건
+            뉴스 게시판의 "보관 기간"(기본 180일 = 6개월)이 지나면 자동 삭제됩니다 — 계속 남겨두고 싶은 기사는 목록에서
+            "보관"을 눌러두면 기간이 지나도 삭제되지 않고, "보관함만 보기"로 모아볼 수 있습니다. 더 넓은 기간을 검색하려면
+            설정에서 보관 기간 값을 늘려두세요. 조건에 맞는 뉴스가 하나도 없으면(보관 기간이 지나 정리됐거나, 애초에
+            이 화면이 다루는 3개 피드에 뜬 적 없는 기사인 경우) "외부 브라우저에서 검색하기" 버튼으로 같은 검색어를
+            구글 뉴스에서 바로 찾아볼 수 있습니다.</p>
           </section>
 
           <section id="help-laws">
@@ -517,7 +563,12 @@
           <label class="full">고용노동부 피드 URL <input id="newsSourceMoelUrl" type="text" placeholder="https://..." /></label>
           <label class="full">안전보건공단 피드 URL <input id="newsSourceKoshaUrl" type="text" placeholder="https://..." /></label>
           <label class="full">중대재해 뉴스 피드 URL <input id="newsSourceAccidentUrl" type="text" placeholder="https://..." /></label>
-          <label>카테고리별 최대 보관 건수 <input id="newsMaxItems" type="number" min="5" max="200" /></label>
+          <label class="full">보관 기간(일) <input id="newsRetentionDays" type="number" min="7" max="3650" style="max-width: 160px;" />
+            <span class="hint">
+              발행일 기준 이 기간(기본 180일 = 6개월)이 지난 뉴스는 자동 삭제됩니다. "안전보건 뉴스" 탭에서 개별 항목을
+              "보관" 처리해두면 기간이 지나도 삭제되지 않고 계속 남습니다. 이 값이 곧 검색 가능한 기간이기도 합니다.
+            </span>
+          </label>
           <div class="form-actions">
             <button type="submit" class="btn btn-primary">저장</button>
             <button type="button" id="newsSyncNowBtn" class="btn">지금 새로고침</button>
@@ -575,6 +626,7 @@
 
   <div id="toast" class="toast" hidden></div>
 
-  <script type="module" src="/js/main.js"></script>
+  <script src="demo-mode.js"></script>
+  <script type="module" src="js/main.js"></script>
 </body>
 </html>

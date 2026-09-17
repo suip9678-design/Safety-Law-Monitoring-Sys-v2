@@ -255,5 +255,9 @@ class NewsItem(Base):
     # 채워 넣는 예시 데이터인지 여부. 실제 데이터가 들어오기 시작하면 같은
     # 카테고리의 예시 항목은 정리된다.
     is_demo: Mapped[bool] = mapped_column(Boolean, default=False)
+    # 사용자가 "안전보건 뉴스" 화면에서 직접 표시하는 보관 여부. 보관 처리된
+    # 항목은 news_service.sync_news의 발행일 기준 보관 기간(기본 6개월)
+    # 정리 대상에서 제외되어 기간이 지나도 삭제되지 않는다.
+    is_archived: Mapped[bool] = mapped_column(Boolean, default=False)
 
     __table_args__ = (UniqueConstraint("category", "guid", name="uq_news_category_guid"),)

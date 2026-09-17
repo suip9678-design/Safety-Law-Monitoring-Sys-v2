@@ -3,6 +3,7 @@
 
 import { state } from "./core.js";
 import { loadDashboard } from "./dashboard.js";
+import { loadNewsPage } from "./news-page.js";
 import { loadLaws } from "./laws.js";
 import { loadRevisions } from "./revisions.js";
 import { loadKoshaGuides } from "./kosha-guide.js";
@@ -33,6 +34,7 @@ export function viewRevisionsForLaw(lawId, lawName) {
 
 export function loadTab(tab) {
   if (tab === "dashboard") loadDashboard();
+  if (tab === "news") loadNewsPage();
   if (tab === "laws") loadLaws();
   if (tab === "revisions") loadRevisions();
   if (tab === "kosha-guides") loadKoshaGuides();
