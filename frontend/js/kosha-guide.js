@@ -7,6 +7,21 @@
 import { state, api, toast, fmtDate, escapeHtml } from "./core.js";
 import { highlightSnippet } from "./keyword-search.js";
 
+// KOSHA GUIDE는 공식 열람 URL 패턴이 검증되지 않았고(kosha_guide_api.py의
+// _LINK_FIELD_CANDIDATES 참고 - 실제 응답으로 확인 못 함), API 동기화로
+// 받아온 항목은 원문 링크(file_link)가 비어 있는 경우가 흔하다. 링크가
+// 없다고 그냥 못 열게 두지 않고, 검색엔진에서 kosha.or.kr로 좁혀 제목을
+// 검색하는 링크를 대신 제공해 최소한 "찾아볼 방법"은 항상 있게 한다.
+function externalKoshaSearchUrl(title) {
+  return `https://www.google.com/search?q=${encodeURIComponent(`site:kosha.or.kr ${title}`)}`;
+}
+
+function viewLinkHtml(g) {
+  return g.file_link
+    ? `<a class="link-btn" href="${escapeHtml(g.file_link)}" target="_blank" rel="noopener">열람</a>`
+    : `<a class="link-btn" href="${escapeHtml(externalKoshaSearchUrl(g.title))}" target="_blank" rel="noopener" title="원문 링크가 없어 대신 KOSHA 사이트로 좁혀 검색합니다">KOSHA에서 찾기</a>`;
+}
+
 let koshaGuideFilterText = "";
 
 function openKoshaGuideModal() {
@@ -35,7 +50,7 @@ export async function loadKoshaGuides() {
 function renderKoshaGuidesTable() {
   const el = document.getElementById("koshaGuidesTable");
   if (!state.koshaGuides.length) {
-    el.innerHTML = `<div class="empty">등록된 KOSHA 가이드가 없습니다. 위 "가이드 추가" 또는 "일괄 등록"으로 채워보세요.</div>`;
+    el.innerHTML = `<div class="empty">등록된 KOSHA 가이드가 없습니다. 위 "가이드 추가" 또는 "여러 건 한 번에 붙여넣기"로 채워보세요.</div>`;
     return;
   }
   const q = koshaGuideFilterText.trim();
@@ -56,11 +71,10 @@ function renderKoshaGuidesTable() {
           <tr>
             <td>${escapeHtml(g.code || "-")}</td>
             <td>${escapeHtml(g.field || "-")}</td>
-            <td>${g.file_link
-              ? `<a href="${escapeHtml(g.file_link)}" target="_blank" rel="noopener">${escapeHtml(g.title)}</a>`
-              : escapeHtml(g.title)}</td>
+            <td>${escapeHtml(g.title)}</td>
             <td>${fmtDate(g.issued_date)}</td>
             <td>
+              ${viewLinkHtml(g)}
               <button class="link-btn" data-edit-kosha-guide="${g.id}">수정</button>
               <button class="link-btn" data-delete-kosha-guide="${g.id}">삭제</button>
             </td>
@@ -172,18 +186,17 @@ async function searchKoshaGuides() {
     }
     el.innerHTML = `
       <table>
-        <thead><tr><th>지침번호</th><th>분야</th><th>제목</th><th>매칭 위치</th><th>미리보기</th><th>제개정일자</th></tr></thead>
+        <thead><tr><th>지침번호</th><th>분야</th><th>제목</th><th>매칭 위치</th><th>미리보기</th><th>제개정일자</th><th></th></tr></thead>
         <tbody>
           ${results.map((r) => `
             <tr>
               <td>${escapeHtml(r.code || "-")}</td>
               <td>${escapeHtml(r.field || "-")}</td>
-              <td>${r.file_link
-                ? `<a href="${escapeHtml(r.file_link)}" target="_blank" rel="noopener">${escapeHtml(r.title)}</a>`
-                : escapeHtml(r.title)}</td>
+              <td>${escapeHtml(r.title)}</td>
               <td>${KOSHA_GUIDE_MATCHED_IN_LABEL[r.matched_in] || "-"}</td>
               <td class="search-snippet">${r.snippet ? highlightSnippet(r.snippet, query) : '<span class="hint">-</span>'}</td>
               <td>${fmtDate(r.issued_date)}</td>
+              <td>${viewLinkHtml(r)}</td>
             </tr>
           `).join("")}
         </tbody>
