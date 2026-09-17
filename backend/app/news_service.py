@@ -16,6 +16,7 @@ from __future__ import annotations
 import datetime
 import email.utils
 import logging
+import threading
 import xml.etree.ElementTree as ET
 
 import httpx
@@ -112,6 +113,17 @@ def configured_sources(db) -> list[tuple[str, str, str]]:
 # 막기 위한 최후의 상한선이라 넉넉하게 잡아둔다.
 _HARD_CAP_PER_CATEGORY = 5000
 
+# sync_news()는 "이미 있는지 확인 후 없으면 삽입"하는 방식이라, 서버 시작
+# 20초 뒤에 자동으로 도는 예약 작업(main.py의 _scheduled_news_sync)과
+# 사용자가 대시보드에 들어올 때 트리거되는 백그라운드 재동기화, "지금
+# 새로고침" 버튼이 거의 동시에 겹치면 둘 다 "아직 없다"고 확인한 뒤 같은
+# guid로 동시에 삽입을 시도해 두 번째 커밋이 UNIQUE 제약 위반(500 에러)으로
+# 실패할 수 있었다. 이 앱은 단일 프로세스로 도는 걸 전제하므로(README/여러
+# 스크립트 주석 참고), 프로세스 안에서 겹쳐 부르는 것만 막아주면 충분해
+# 락으로 직렬화한다 - 그러면 뒤에 들어온 호출은 앞선 호출이 이미 커밋한
+# 결과를 보고 "이미 있음"으로 정상적으로 건너뛴다.
+_sync_lock = threading.Lock()
+
 
 def sync_news(db, sources: list[tuple[str, str, str]], retention_days: int) -> int:
     """각 소스를 가져와 새 항목만 저장한다. 돌려주는 값은 신규 저장 건수.
@@ -119,6 +131,11 @@ def sync_news(db, sources: list[tuple[str, str, str]], retention_days: int) -> i
     실제 피드가 비어 있으면(네트워크 차단, 주소 미설정 등) 화면이 텅 비어
     보이지 않도록 fixtures.demo_news()로 채운다. 반대로 실제 데이터가 들어
     오기 시작하면 그 카테고리의 예시 항목은 정리한다."""
+    with _sync_lock:
+        return _sync_news_locked(db, sources, retention_days)
+
+
+def _sync_news_locked(db, sources: list[tuple[str, str, str]], retention_days: int) -> int:
     added = 0
     for category, source_name, url in sources:
         fetched = fetch_feed(url)
