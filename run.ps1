@@ -72,11 +72,62 @@ function Ensure-BackendReady {
     return $true
 }
 
+function Get-ConfiguredPort {
+    # backend\.env의 "PORT=" 값을 읽어 쓴다. 8000번을 못 쓰는 경우(다른
+    # 프로그램이 이미 쓰고 있거나, Windows에서 Hyper-V/WSL2/Docker Desktop이
+    # 그 번호를 "동적 포트 예약 범위"로 잡아둔 경우 - 서버가 뜨자마자
+    # [WinError 10013] 오류로 멈추는 증상으로 나타남)에도, 코드를 고치지
+    # 않고 .env에 한 줄만 추가하면 바로 다른 포트로 바꿀 수 있게 하기
+    # 위함이다. 값이 없거나 숫자가 아니면 기본값 8000을 쓴다.
+    $envFile = Join-Path $PSScriptRoot "backend\.env"
+    if (Test-Path $envFile) {
+        $match = Select-String -Path $envFile -Pattern '^\s*PORT\s*=\s*(\d+)\s*$' -ErrorAction SilentlyContinue | Select-Object -First 1
+        if ($match) {
+            return [int]$match.Matches[0].Groups[1].Value
+        }
+    }
+    return 8000
+}
+
+function Update-FromGit {
+    # 로컬에 커밋되지 않은 변경사항(예: 이 폴더에서 직접 파일을 고친 적이
+    # 있는 경우)이 있으면 git pull이 "Your local changes... would be
+    # overwritten by merge"로 막힌다 - 그때마다 사용자가 직접 git stash를
+    # 해야 했던 번거로움을 없애려고, 있으면 자동으로 잠깐 보관해뒀다가
+    # (untracked 파일은 건드리지 않고 추적 중인 파일 변경분만) pull이 끝나면
+    # 다시 얹는다. 최신 커밋으로 실제로 업데이트됐는지도 커밋 해시로 비교해
+    # "받아졌는지 안 받아졌는지 헷갈림" 문제를 없앤다.
+    $beforeCommit = (git rev-parse --short HEAD 2>$null).Trim()
+
+    $hasLocalChanges = -not [string]::IsNullOrWhiteSpace((git status --porcelain))
+    if ($hasLocalChanges) {
+        Write-Host "  (로컬에 커밋되지 않은 변경사항이 있어 잠깐 보관해두고 받습니다...)" -ForegroundColor DarkGray
+        git stash push -m "run.bat 자동 보관 ($(Get-Date -Format 'yyyy-MM-dd HH:mm'))" | Out-Null
+    }
+
+    git pull
+
+    if ($hasLocalChanges) {
+        git stash pop
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "`n[알림] 아까 보관해둔 로컬 변경사항을 최신 코드 위에 자동으로 다시 합치지 못했습니다(내용이 겹치는 부분이 있는 것으로 보입니다)." -ForegroundColor Yellow
+            Write-Host "  'git status'로 어느 파일이 겹치는지 확인해 직접 정리해주세요. 보관해둔 내용은 사라지지 않고 'git stash list'에 남아있습니다." -ForegroundColor Yellow
+        }
+    }
+
+    $afterCommit = (git rev-parse --short HEAD 2>$null).Trim()
+    if ($beforeCommit -and $afterCommit -and $beforeCommit -ne $afterCommit) {
+        Write-Host "  업데이트됨: $beforeCommit -> $afterCommit" -ForegroundColor Green
+    } elseif ($afterCommit) {
+        Write-Host "  이미 최신 상태입니다 ($afterCommit)" -ForegroundColor DarkGray
+    }
+}
+
 function Start-Server {
     Set-Location $PSScriptRoot
 
     Write-Host "`n[1/3] 최신 코드 받는 중 (git pull)..." -ForegroundColor Cyan
-    git pull
+    Update-FromGit
 
     Write-Host "`n[2/3] 실행 환경 준비 중 (가상환경/패키지 확인)..." -ForegroundColor Cyan
     if (-not (Ensure-BackendReady)) {
@@ -94,21 +145,24 @@ function Start-Server {
         return
     }
 
+    $port = Get-ConfiguredPort
     Write-Host "`n[3/3] 서버 실행 중... (작업을 일시중지하고 메뉴로 가려면 Ctrl+C를 누르세요)" -ForegroundColor Cyan
-    Write-Host "브라우저에서 http://localhost:8000 접속하세요.`n" -ForegroundColor Green
+    Write-Host "브라우저에서 http://localhost:$port 접속하세요.`n" -ForegroundColor Green
 
     # 1. PowerShell이 Ctrl+C를 맞고 죽는 것을 방지
     [Console]::TreatControlCAsInput = $true
 
     # 2. 서버를 실행하고 해당 프로세스 정보를 $process 변수에 담음 (PassThru)
-    $process = Start-Process -FilePath $uvicorn.Source -ArgumentList @("app.main:app", "--reload", "--port", "8000") -NoNewWindow -PassThru
+    $startedAt = Get-Date
+    $userStopped = $false
+    $process = Start-Process -FilePath $uvicorn.Source -ArgumentList @("app.main:app", "--reload", "--port", "$port") -NoNewWindow -PassThru
 
     # 3. 서버가 살아있는 동안 반복해서 키 입력을 감시
     try {
         while (-not $process.HasExited) {
             if ([Console]::KeyAvailable) {
                 $key = [Console]::ReadKey($true)
-                
+
                 # Ctrl + C 가 눌렸는지 확인
                 if ($key.Key -eq [ConsoleKey]::C -and $key.Modifiers -match 'Control') {
                     Write-Host "`n[알림] Ctrl+C 감지됨. 서버 프로세스를 중지합니다..." -ForegroundColor Yellow
@@ -121,6 +175,7 @@ function Start-Server {
                     # 증상으로 나타남). taskkill /T로 자식 프로세스까지 함께
                     # 종료해야 한다.
                     & taskkill /PID $process.Id /T /F 2>$null | Out-Null
+                    $userStopped = $true
                     break
                 }
             }
@@ -130,6 +185,28 @@ function Start-Server {
     } finally {
         # 4. 루프를 빠져나오면 다시 일반적인 입력 상태로 되돌림 (Read-Host 작동을 위해)
         [Console]::TreatControlCAsInput = $false
+    }
+
+    # 사용자가 Ctrl+C로 직접 멈춘 게 아닌데도 몇 초 만에 프로세스가 바로
+    # 죽었다면, 서버 코드 자체의 문제라기보다 시작 단계(포트 바인딩)에서
+    # 실패했을 가능성이 크다. 특히 Windows의 [WinError 10013]("액세스
+    # 권한에 의해 숨겨진 소켓에 액세스를 시도했습니다")은 그 포트를 이미
+    # 다른 프로그램이 쓰고 있거나, Hyper-V/WSL2/Docker Desktop이 그 포트를
+    # "동적 포트 예약 범위"로 잡아둔 경우 흔히 나는 오류다(이 저장소의
+    # 개발 환경은 Linux라 이 시나리오를 직접 재현하지는 못했다 - 실제
+    # Windows 사용자가 겪은 사례를 바탕으로 추가한 진단 메시지다). 위쪽에
+    # 이미 출력된 uvicorn/Python 자신의 원본 오류 메시지에 이어서, 무엇을
+    # 확인하면 되는지 구체적인 다음 행동을 안내한다.
+    $elapsedSeconds = ((Get-Date) - $startedAt).TotalSeconds
+    if ((-not $userStopped) -and $process.HasExited -and $elapsedSeconds -lt 5 -and $process.ExitCode -ne 0) {
+        Write-Host "`n[진단] 서버가 시작하자마자(약 $([math]::Round($elapsedSeconds, 1))초 만에) 멈췄습니다 - 대부분 포트 ${port}번을 쓸 수 없어서입니다." -ForegroundColor Yellow
+        Write-Host "  1) 이미 이 포트를 쓰는 다른 프로그램이 있는지 확인:" -ForegroundColor Gray
+        Write-Host "     netstat -ano | findstr :$port" -ForegroundColor DarkGray
+        Write-Host "  2) [WinError 10013] 오류였다면, Hyper-V/WSL2/Docker Desktop이 이 포트를 예약해둔 경우가 흔합니다. 아래 명령으로 확인하세요:" -ForegroundColor Gray
+        Write-Host "     netsh interface ipv4 show excludedportrange protocol=tcp" -ForegroundColor DarkGray
+        Write-Host "  3) 위 범위 안에 $port번이 들어 있다면, backend\.env 파일을 열어 아래 줄을 추가한 뒤 다시 실행하세요 (예: 8080번으로 변경):" -ForegroundColor Gray
+        Write-Host "     PORT=8080" -ForegroundColor DarkGray
+        Write-Host "     (그 뒤로는 http://localhost:8080 으로 접속하면 됩니다)" -ForegroundColor Gray
     }
 
     Set-Location $PSScriptRoot

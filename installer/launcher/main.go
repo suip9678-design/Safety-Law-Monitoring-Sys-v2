@@ -18,6 +18,7 @@ import (
 	"unsafe"
 
 	"github.com/getlantern/systray"
+	"golang.org/x/sys/windows/registry"
 )
 
 // 트레이 아이콘 이미지. 빌드 시점에 바이너리 안에 그대로 박아 넣어(go:embed),
@@ -26,10 +27,20 @@ import (
 //go:embed icon.ico
 var iconBytes []byte
 
-// 빌드 시 -ldflags "-X main.installDir=..." 로 실제 설치 경로를 주입할 수
-// 있다(공백이 있는 경로는 셸 이스케이프가 까다로워, 기본값을 NSIS가 쓰는
-// 경로와 동일하게 맞춰두고 보통은 오버라이드 없이 그대로 쓴다).
-var installDir = `C:\Program Files\SafetyLawMonitor`
+// 설치 폴더 경로. 예전에는 상수(`C:\Program Files\SafetyLawMonitor`)로
+// 박아뒀지만, 지금은 관리자 권한 없이 설치할 수 있도록 사용자 폴더
+// (`%LOCALAPPDATA%\Programs\SafetyLawMonitor`)에 설치한다. 이 경로에는
+// 윈도우 계정 이름이 들어가서 PC마다 달라지므로, 빌드 시점에 고정할 수
+// 없고 실행할 때마다 찾아내야 한다(resolveInstallDir 참고).
+//
+// 빌드 시 -ldflags "-X main.installDirOverride=..." 로 특정 경로를 강제할
+// 수도 있다(보통은 비워두고 자동 탐색에 맡긴다).
+var installDirOverride = ""
+
+var installDir string
+
+// 설치 프로그램(setup.nsi)이 설치 폴더 경로를 적어두는 레지스트리 위치.
+const registryKeyPath = `Software\SafetyLawMonitor`
 
 const (
 	serverHost = "127.0.0.1"
@@ -47,6 +58,63 @@ const (
 )
 
 var serverCmd *exec.Cmd
+
+// 설치 폴더 안에 파이썬 실행환경이 실제로 들어있는지로 "진짜 설치 폴더"인지
+// 확인한다.
+func hasRuntime(dir string) bool {
+	if dir == "" {
+		return false
+	}
+	if _, err := os.Stat(filepath.Join(dir, "python", "pythonw.exe")); err != nil {
+		return false
+	}
+	return true
+}
+
+// 설치 프로그램이 기록해둔 설치 경로를 레지스트리에서 읽는다. 사용자 폴더
+// 설치(HKCU)를 먼저 보고, 없으면 예전의 관리자 권한 설치(HKLM)도 본다.
+func installDirFromRegistry() string {
+	for _, root := range []registry.Key{registry.CURRENT_USER, registry.LOCAL_MACHINE} {
+		key, err := registry.OpenKey(root, registryKeyPath, registry.QUERY_VALUE)
+		if err != nil {
+			continue
+		}
+		value, _, err := key.GetStringValue("InstallDir")
+		key.Close()
+		if err == nil && hasRuntime(value) {
+			return value
+		}
+	}
+	return ""
+}
+
+// 설치 폴더를 찾는다. 바탕화면에 놓인 실행 파일은 설치 폴더 밖에 있어서,
+// 아래 순서대로 훑어본다.
+func resolveInstallDir() string {
+	defaultDir := filepath.Join(os.Getenv("LOCALAPPDATA"), "Programs", "SafetyLawMonitor")
+
+	candidates := []string{
+		installDirOverride, // 1. 빌드 시 강제 지정한 경로(있다면)
+	}
+	// 2. 실행 파일이 놓인 폴더 - 설치 폴더 안의 launcher.exe를 직접 실행한 경우
+	if exePath, err := os.Executable(); err == nil {
+		candidates = append(candidates, filepath.Dir(exePath))
+	}
+	candidates = append(candidates,
+		installDirFromRegistry(),            // 3. 설치 프로그램이 적어둔 경로
+		defaultDir,                          // 4. 기본 설치 위치
+		`C:\Program Files\SafetyLawMonitor`, // 5. 예전(관리자 권한) 설치 위치
+	)
+
+	for _, dir := range candidates {
+		if hasRuntime(dir) {
+			return dir
+		}
+	}
+	// 어디에서도 못 찾으면 기본 위치를 돌려준다 - 어차피 서버 실행은
+	// 실패하겠지만, 오류 안내창에 "여기를 찾아봤다"고 보여줄 수 있다.
+	return defaultDir
+}
 
 func serverURL() string {
 	return fmt.Sprintf("http://%s:%s", serverHost, serverPort)
@@ -153,6 +221,8 @@ func ensureRunningAndOpen() {
 }
 
 func main() {
+	installDir = resolveInstallDir()
+
 	if !acquireSingleInstance() {
 		// 이미 실행 중 - 서버가 응답할 때까지 잠깐 기다렸다가 브라우저만 연다.
 		for i := 0; i < 10 && !isServerUp(); i++ {

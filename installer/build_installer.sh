@@ -3,12 +3,18 @@
 # 순서대로 실행한다.
 #
 # 사용법:
-#   installer/build_installer.sh [--db <미리 캐시해둔 safety_law_tracker.db 경로>] [--skip-fetch]
+#   installer/build_installer.sh [--db <미리 캐시해둔 safety_law_tracker.db 경로>]
+#                                [--oc <국가법령정보센터 OC 키>] [--skip-fetch]
 #
 #   --db <path>     이미 "전체 법령 자동 캐시"를 한 번 돌려서 다 채워둔
 #                   safety_law_tracker.db 파일을 설치 파일 안에 포함시킨다.
 #                   생략하면 빈 DB로 시작해서, 설치 후 첫 실행 때부터
 #                   캐시를 새로 받아야 한다(대기시간이 길어짐).
+#   --oc <key>      국가법령정보센터 OpenAPI의 OC 키를 설치 파일 안에 미리
+#                   넣어둔다. IT를 잘 모르는 사람에게 배포할 때 권장 -
+#                   받는 사람이 설정 화면에서 키를 입력하는 과정 없이 설치
+#                   직후부터 실제 법령 데이터로 바로 쓸 수 있다. 생략하면
+#                   받는 사람이 직접 입력하기 전까지 데모 모드로 동작한다.
 #   --skip-fetch    Python 실행환경/wheel을 다시 받지 않고 이미 받아둔
 #                   build/payload/python을 그대로 재사용한다(재빌드 반복
 #                   시 시간 절약용).
@@ -26,10 +32,12 @@ PAYLOAD_PY="$BUILD_DIR/payload/python"
 PAYLOAD_APP="$BUILD_DIR/payload/app"
 
 DB_PATH=""
+LAW_API_OC=""
 SKIP_FETCH=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --db) DB_PATH="$2"; shift 2 ;;
+    --oc) LAW_API_OC="$2"; shift 2 ;;
     --skip-fetch) SKIP_FETCH="1"; shift ;;
     *) echo "알 수 없는 옵션: $1" >&2; exit 1 ;;
   esac
@@ -55,7 +63,7 @@ else
 fi
 
 echo "[3/5] 앱 소스 준비"
-bash "$INSTALLER_DIR/scripts/stage_app.sh" "$PAYLOAD_APP"
+bash "$INSTALLER_DIR/scripts/stage_app.sh" "$PAYLOAD_APP" "$LAW_API_OC"
 
 if [[ -n "$DB_PATH" ]]; then
   echo "  미리 캐시해둔 DB 포함: $DB_PATH"
@@ -71,8 +79,11 @@ fi
 ( cd "$INSTALLER_DIR/launcher" && go-winres make --arch amd64 )
 
 echo "[5/6] 바탕화면 실행 파일(launcher.exe) 빌드"
+# -s -w: 디버그 심볼/DWARF 정보를 빼고 빌드한다(실행 파일이 9MB -> 6MB로
+# 줄어 설치 파일 용량도 그만큼 작아진다. 사용자 PC에서 디버거를 붙일 일은
+# 없고, 문제 확인은 서버 로그(server.log)로 한다).
 ( cd "$INSTALLER_DIR/launcher" && \
-  GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -ldflags "-H=windowsgui" -o launcher.exe . )
+  GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -ldflags "-H=windowsgui -s -w" -o launcher.exe . )
 
 echo "[6/6] 설치 프로그램(NSIS) 빌드"
 ( cd "$INSTALLER_DIR" && makensis setup.nsi )
