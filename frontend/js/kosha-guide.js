@@ -22,6 +22,55 @@ function viewLinkHtml(g) {
     : `<a class="link-btn" href="${escapeHtml(externalKoshaSearchUrl(g.title))}" target="_blank" rel="noopener" title="원문 링크가 없어 대신 KOSHA 사이트로 좁혀 검색합니다">KOSHA에서 찾기</a>`;
 }
 
+// 제목을 누르면 뜨는 상세보기 팝업 - 등록된 목록에서는 이미 갖고 있는 전체
+// 데이터(본문 포함)를 그대로 보여주고, 검색 결과에서는 본문 미리보기
+// (snippet)만 있으므로 전체 본문을 보려면 단건 조회로 다시 받아온다.
+// 어느 쪽이든 state.koshaGuides에 이미 로드되어 있으면(같은 세션 안에서
+// "등록된 KOSHA 가이드" 목록을 한 번이라도 불러온 경우) 그 캐시를 먼저
+// 쓰고, 없을 때만 서버에 물어본다.
+function openKoshaGuideDetailModal(guide) {
+  document.getElementById("koshaGuideDetailTitle").textContent = guide.title;
+  const metaParts = [];
+  if (guide.code) metaParts.push(`지침번호: ${guide.code}`);
+  if (guide.field) metaParts.push(`분야: ${guide.field}`);
+  if (guide.issued_date) metaParts.push(`제개정일자: ${fmtDate(guide.issued_date)}`);
+  document.getElementById("koshaGuideDetailMeta").textContent = metaParts.join(" · ");
+  document.getElementById("koshaGuideDetailContent").textContent = guide.content || "등록된 본문이 없습니다.";
+  const noteEl = document.getElementById("koshaGuideDetailNote");
+  noteEl.hidden = !guide.note;
+  noteEl.textContent = guide.note ? `비고: ${guide.note}` : "";
+  document.getElementById("koshaGuideDetailActions").innerHTML = viewLinkHtml(guide);
+  document.getElementById("koshaGuideDetailModalOverlay").hidden = false;
+}
+
+function closeKoshaGuideDetailModal() {
+  document.getElementById("koshaGuideDetailModalOverlay").hidden = true;
+}
+
+async function openKoshaGuideDetailById(id) {
+  const cached = state.koshaGuides.find((g) => g.id === id);
+  if (cached) {
+    openKoshaGuideDetailModal(cached);
+    return;
+  }
+  try {
+    const guide = await api(`/api/kosha-guides/${id}`);
+    openKoshaGuideDetailModal(guide);
+  } catch (e) {
+    toast(`상세 정보를 불러오지 못했습니다: ${e.message}`, true);
+  }
+}
+
+export function initKoshaGuideDetailModal() {
+  document.getElementById("koshaGuideDetailCloseBtn").addEventListener("click", closeKoshaGuideDetailModal);
+  document.getElementById("koshaGuideDetailModalOverlay").addEventListener("click", (ev) => {
+    if (ev.target.id === "koshaGuideDetailModalOverlay") closeKoshaGuideDetailModal();
+  });
+  document.addEventListener("keydown", (ev) => {
+    if (ev.key === "Escape" && !document.getElementById("koshaGuideDetailModalOverlay").hidden) closeKoshaGuideDetailModal();
+  });
+}
+
 let koshaGuideFilterText = "";
 
 function openKoshaGuideModal() {
@@ -71,7 +120,7 @@ function renderKoshaGuidesTable() {
           <tr>
             <td>${escapeHtml(g.code || "-")}</td>
             <td>${escapeHtml(g.field || "-")}</td>
-            <td>${escapeHtml(g.title)}</td>
+            <td><button type="button" class="link-btn" data-guide-detail="${g.id}" title="본문 전체 보기">${escapeHtml(g.title)}</button></td>
             <td>${fmtDate(g.issued_date)}</td>
             <td>
               ${viewLinkHtml(g)}
@@ -83,6 +132,9 @@ function renderKoshaGuidesTable() {
       </tbody>
     </table>
   `;
+  el.querySelectorAll("[data-guide-detail]").forEach((btn) => {
+    btn.addEventListener("click", () => openKoshaGuideDetailById(Number(btn.dataset.guideDetail)));
+  });
   el.querySelectorAll("[data-edit-kosha-guide]").forEach((btn) => {
     btn.addEventListener("click", () => startEditKoshaGuide(Number(btn.dataset.editKoshaGuide)));
   });
@@ -192,7 +244,7 @@ async function searchKoshaGuides() {
             <tr>
               <td>${escapeHtml(r.code || "-")}</td>
               <td>${escapeHtml(r.field || "-")}</td>
-              <td>${escapeHtml(r.title)}</td>
+              <td><button type="button" class="link-btn" data-guide-detail="${r.id}" title="본문 전체 보기">${escapeHtml(r.title)}</button></td>
               <td>${KOSHA_GUIDE_MATCHED_IN_LABEL[r.matched_in] || "-"}</td>
               <td class="search-snippet">${r.snippet ? highlightSnippet(r.snippet, query) : '<span class="hint">-</span>'}</td>
               <td>${fmtDate(r.issued_date)}</td>
@@ -202,6 +254,9 @@ async function searchKoshaGuides() {
         </tbody>
       </table>
     `;
+    el.querySelectorAll("[data-guide-detail]").forEach((btn) => {
+      btn.addEventListener("click", () => openKoshaGuideDetailById(Number(btn.dataset.guideDetail)));
+    });
   } catch (e) {
     if (mySeq !== koshaGuideSearchSeq) return;
     el.innerHTML = `<div class="empty">검색 실패: ${escapeHtml(e.message)}</div>`;

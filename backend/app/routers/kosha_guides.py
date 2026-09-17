@@ -80,6 +80,20 @@ def search_guides(query: str = Query(..., min_length=1), db: Session = Depends(g
     return results
 
 
+# "/search"(위)가 static path라 먼저 등록되어 있어야 아래 "/{guide_id}"가
+# "/search" 요청까지 가로채 int 파싱 실패(422)를 내는 일이 없다 - FastAPI는
+# 경로를 등록 순서대로 매칭하므로 이 순서를 반드시 지켜야 한다.
+@router.get("/{guide_id}", response_model=schemas.KoshaGuideOut)
+def get_guide(guide_id: int, db: Session = Depends(get_db)):
+    """가이드 상세 팝업용 단건 조회. 목록/검색 결과 중 검색 결과
+    (KoshaGuideSearchResult)는 본문 미리보기(snippet)만 갖고 있어, 전체
+    본문을 보여주려면 이 엔드포인트로 다시 받아와야 한다."""
+    guide = db.get(models.KoshaGuide, guide_id)
+    if not guide:
+        raise HTTPException(status_code=404, detail="가이드를 찾을 수 없습니다.")
+    return guide
+
+
 @router.post("", response_model=schemas.KoshaGuideOut, status_code=201)
 def create_guide(payload: schemas.KoshaGuideCreate, db: Session = Depends(get_db)):
     title = payload.title.strip()

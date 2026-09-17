@@ -915,6 +915,15 @@
       },
     },
     {
+      method: "GET",
+      re: /^\/api\/kosha-guides\/(\d+)$/,
+      handler: (m) => {
+        const guide = store.koshaGuides.find((g) => g.id === Number(m[1]));
+        if (!guide) return errorResponse(404, "가이드를 찾을 수 없습니다.");
+        return jsonResponse(200, guide);
+      },
+    },
+    {
       method: "POST",
       re: /^\/api\/kosha-guides$/,
       handler: (m, sp, body) => {
