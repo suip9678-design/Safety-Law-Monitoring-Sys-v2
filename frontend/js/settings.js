@@ -6,6 +6,7 @@ import { api, toast, fmtDateTime, escapeHtml } from "./core.js";
 import { runSync } from "./sync.js";
 import { loadNewsBoard } from "./news.js";
 import { loadDashboard } from "./dashboard.js";
+import { loadIntegrationStatus } from "./integration-status.js";
 
 // ---------- 무시한 신규 고시 후보 관리 ----------
 
@@ -159,7 +160,6 @@ function dateInputToYyyymmdd(v) {
 export async function loadSettings() {
   try {
     const s = await api("/api/settings");
-    document.getElementById("demoBadge").hidden = !s.demo_mode;
     document.getElementById("settingOc").value = s.law_api_oc || "";
     document.getElementById("settingOc").placeholder = "OC 키";
     document.getElementById("ocStatus").textContent = s.demo_mode
@@ -259,6 +259,7 @@ export function initSettingsForms() {
       await api("/api/settings", { method: "PUT", body: JSON.stringify({ law_api_oc: value }) });
       toast("OC 키를 저장했습니다.");
       loadSettings();
+      loadIntegrationStatus();
     } catch (e) {
       toast(`저장 실패: ${e.message}`, true);
     }
@@ -277,6 +278,7 @@ export function initSettingsForms() {
       await api("/api/settings", { method: "PUT", body: JSON.stringify(payload) });
       toast("KOSHA 가이드 Open API 설정을 저장했습니다.");
       loadSettings();
+      loadIntegrationStatus();
     } catch (e) {
       toast(`저장 실패: ${e.message}`, true);
     } finally {
@@ -367,6 +369,7 @@ export function initSettingsForms() {
       await api("/api/settings", { method: "PUT", body: JSON.stringify(payload) });
       document.getElementById("newsSettingsStatus").textContent = "저장했습니다.";
       loadNewsBoard();
+      loadIntegrationStatus();
     } catch (e) {
       toast(`저장 실패: ${e.message}`, true);
     } finally {
@@ -382,6 +385,7 @@ export function initSettingsForms() {
       const result = await api("/api/news/sync", { method: "POST" });
       document.getElementById("newsSettingsStatus").textContent = `새로고침 완료: 신규 ${result.added}건`;
       loadNewsBoard();
+      loadIntegrationStatus();
     } catch (e) {
       toast(`새로고침 실패: ${e.message}`, true);
     } finally {

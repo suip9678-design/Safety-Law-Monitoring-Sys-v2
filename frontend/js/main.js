@@ -1,7 +1,6 @@
 // 앱 진입점. 화면별 모듈들의 init*()/load*()를 불러와 DOMContentLoaded
 // 시점에 한 번 배선하는 역할만 한다 - 실제 로직은 각 모듈 안에 있다.
 
-import { api } from "./core.js";
 import { initTabs, loadTab } from "./tabs.js";
 import { initLawsTab } from "./laws.js";
 import { initRevisionsTab } from "./revisions.js";
@@ -15,6 +14,7 @@ import { initHelpModal } from "./help.js";
 import { initKeywordSearch } from "./keyword-search.js";
 import { initNewsBoard } from "./news.js";
 import { initNewsPage } from "./news-page.js";
+import { loadIntegrationStatus, initIntegrationStatusModal } from "./integration-status.js";
 import { loadDashboard } from "./dashboard.js";
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -34,9 +34,10 @@ document.addEventListener("DOMContentLoaded", () => {
   initKeywordSearch();
   initNewsBoard();
   initNewsPage();
+  initIntegrationStatusModal();
 
   loadDashboard();
-  api("/api/health").then((h) => { document.getElementById("demoBadge").hidden = !h.demo_mode; }).catch(() => {});
+  loadIntegrationStatus();
 
   // 다른 브라우저 탭/창을 보다가 이 화면으로 돌아왔을 때 자동으로 최신
   // 내용을 다시 불러온다. 설정을 저장하면 자동으로 새로고침(동기화)까지
@@ -48,5 +49,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const activeTab = document.querySelector(".tab-btn.active").dataset.tab;
     loadTab(activeTab);
     if (activeTab !== "dashboard") loadDashboard();
+    loadIntegrationStatus();
   });
 });

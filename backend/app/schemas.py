@@ -235,6 +235,12 @@ class SettingsOut(BaseModel):
     news_source_kosha_url: str | None = None
     news_source_accident_url: str | None = None
     news_retention_days: int = 180
+    # 가장 최근에 받아온 뉴스가 예시(데모) 데이터인지 - True면 실제 피드
+    # URL이 동작하지 않아 대체된 것이므로 그 URL을 확인해야 한다는 신호.
+    # 한 번도 동기화된 적 없으면 None(아직 판단 불가).
+    news_moel_showing_demo: bool | None = None
+    news_kosha_showing_demo: bool | None = None
+    news_accident_showing_demo: bool | None = None
 
 
 class SettingsUpdate(BaseModel):

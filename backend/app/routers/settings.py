@@ -16,6 +16,22 @@ router = APIRouter(prefix="/api/settings", tags=["settings"])
 _HELP_SHOWN_KEY = "help_shown_once"
 
 
+def _news_showing_demo(db: Session, category: str) -> bool | None:
+    """이 카테고리의 가장 최근에 받아온 뉴스가 예시(데모) 데이터인지.
+    실제 피드 URL이 잘못됐거나 막혀 있으면 news_service.sync_news가 항상
+    fixtures로 채우므로, 이 값이 계속 True로 남아있으면 "이 피드 URL을
+    확인해야 한다"는 신뢰할 수 있는 신호가 된다. 아직 한 번도 동기화된
+    적이 없으면(None) 판단할 근거가 없으므로 "문제 있음"으로 취급하지
+    않는다."""
+    latest = (
+        db.query(models.NewsItem)
+        .filter(models.NewsItem.category == category)
+        .order_by(models.NewsItem.fetched_at.desc())
+        .first()
+    )
+    return bool(latest.is_demo) if latest else None
+
+
 @router.get("", response_model=schemas.SettingsOut)
 def get_settings(db: Session = Depends(get_db)):
     values = settings_store.get_all(db)
@@ -37,6 +53,9 @@ def get_settings(db: Session = Depends(get_db)):
         news_source_kosha_url=values.get("news_source_kosha_url") or None,
         news_source_accident_url=values.get("news_source_accident_url") or None,
         news_retention_days=int(values.get("news_retention_days") or 180),
+        news_moel_showing_demo=_news_showing_demo(db, "moel"),
+        news_kosha_showing_demo=_news_showing_demo(db, "kosha"),
+        news_accident_showing_demo=_news_showing_demo(db, "accident"),
     )
 
 
