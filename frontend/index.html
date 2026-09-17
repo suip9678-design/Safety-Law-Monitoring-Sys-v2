@@ -200,8 +200,8 @@
       <div class="panel-box">
         <h2>등록된 KOSHA 가이드</h2>
         <p class="hint">
-          "열람" 링크는 동기화/등록 시 받아온 원문 링크로 바로 이동합니다. 원문 링크가 없는 항목은 대신
-          "KOSHA에서 찾기"로 외부 브라우저에서 바로 검색해볼 수 있습니다.
+          제목을 누르면 동기화/등록 시 받아온 원문 링크로 바로 이동합니다. 원문 링크가 없는 항목은
+          제목이 클릭되지 않습니다 - "수정"에서 원문 링크를 직접 채워두면 그때부터 클릭할 수 있습니다.
         </p>
         <div class="row">
           <input id="koshaGuideFilterInput" type="text" placeholder="지침번호/제목/분야로 빠르게 찾기" />
@@ -238,17 +238,6 @@
             <button type="button" id="koshaGuideCancelBtn" class="btn">취소</button>
           </div>
         </form>
-      </div>
-    </div>
-
-    <div id="koshaGuideDetailModalOverlay" class="modal-overlay" hidden>
-      <div class="modal-box">
-        <button type="button" id="koshaGuideDetailCloseBtn" class="modal-close" title="닫기" aria-label="닫기">&times;</button>
-        <h2 id="koshaGuideDetailTitle"></h2>
-        <p class="hint" id="koshaGuideDetailMeta"></p>
-        <div id="koshaGuideDetailContent" style="white-space: pre-wrap;"></div>
-        <p class="hint" id="koshaGuideDetailNote" hidden></p>
-        <div class="form-actions" id="koshaGuideDetailActions"></div>
       </div>
     </div>
 
@@ -432,9 +421,9 @@
               <li><b>가이드 추가</b>: 한 건씩 직접 입력합니다.</li>
               <li><b>여러 건 한 번에 붙여넣기(일괄 등록)</b>: "KOSHA 가이드 등록" 패널을 펼치면 갖고 있는 목록을 붙여넣어 한 번에 여러 건을 등록할 수 있습니다.</li>
             </ul>
-            <p><b>등록된 KOSHA 가이드</b> 목록의 "열람"을 누르면 저장된 원문 링크로 바로 이동합니다. API 동기화로 받아온
-            항목은 원문 링크가 비어 있을 수 있는데(공공데이터포털 응답에 링크가 없는 경우), 그럴 땐 대신
-            "KOSHA에서 찾기"가 나타나 외부 브라우저에서 해당 제목으로 바로 검색해볼 수 있습니다.</p>
+            <p><b>등록된 KOSHA 가이드</b> 목록(또는 검색 결과)에서 제목을 누르면 저장된 원문 링크로 바로
+            이동합니다. API 동기화로 받아온 항목은 공공데이터포털 응답에 원문 링크가 없는 경우 제목이
+            클릭되지 않을 수 있는데, 그럴 땐 "수정"에서 원문 링크를 직접 채워두세요.</p>
             <p>지침번호·제목뿐 아니라 본문(입력한 경우)까지 검색하려면 아래 <b>본문 검색</b> 패널을 사용하세요.</p>
           </section>
 

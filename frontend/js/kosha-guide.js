@@ -7,68 +7,14 @@
 import { state, api, toast, fmtDate, escapeHtml } from "./core.js";
 import { highlightSnippet } from "./keyword-search.js";
 
-// KOSHA GUIDE는 공식 열람 URL 패턴이 검증되지 않았고(kosha_guide_api.py의
-// _LINK_FIELD_CANDIDATES 참고 - 실제 응답으로 확인 못 함), API 동기화로
-// 받아온 항목은 원문 링크(file_link)가 비어 있는 경우가 흔하다. 링크가
-// 없다고 그냥 못 열게 두지 않고, 검색엔진에서 kosha.or.kr로 좁혀 제목을
-// 검색하는 링크를 대신 제공해 최소한 "찾아볼 방법"은 항상 있게 한다.
-function externalKoshaSearchUrl(title) {
-  return `https://www.google.com/search?q=${encodeURIComponent(`site:kosha.or.kr ${title}`)}`;
-}
-
-function viewLinkHtml(g) {
+// 제목을 누르면 원문 링크(file_link)로 바로 이동한다. 링크가 없는
+// 항목은 (검색엔진 결과로 대신 보내는 등 엉뚱한 곳으로 보내지 않도록)
+// 그냥 클릭할 수 없는 일반 텍스트로 둔다 - 실제로 열어볼 곳이 없다는
+// 것을 그대로 보여주는 편이 낫다.
+function titleCell(g) {
   return g.file_link
-    ? `<a class="link-btn" href="${escapeHtml(g.file_link)}" target="_blank" rel="noopener">열람</a>`
-    : `<a class="link-btn" href="${escapeHtml(externalKoshaSearchUrl(g.title))}" target="_blank" rel="noopener" title="원문 링크가 없어 대신 KOSHA 사이트로 좁혀 검색합니다">KOSHA에서 찾기</a>`;
-}
-
-// 제목을 누르면 뜨는 상세보기 팝업 - 등록된 목록에서는 이미 갖고 있는 전체
-// 데이터(본문 포함)를 그대로 보여주고, 검색 결과에서는 본문 미리보기
-// (snippet)만 있으므로 전체 본문을 보려면 단건 조회로 다시 받아온다.
-// 어느 쪽이든 state.koshaGuides에 이미 로드되어 있으면(같은 세션 안에서
-// "등록된 KOSHA 가이드" 목록을 한 번이라도 불러온 경우) 그 캐시를 먼저
-// 쓰고, 없을 때만 서버에 물어본다.
-function openKoshaGuideDetailModal(guide) {
-  document.getElementById("koshaGuideDetailTitle").textContent = guide.title;
-  const metaParts = [];
-  if (guide.code) metaParts.push(`지침번호: ${guide.code}`);
-  if (guide.field) metaParts.push(`분야: ${guide.field}`);
-  if (guide.issued_date) metaParts.push(`제개정일자: ${fmtDate(guide.issued_date)}`);
-  document.getElementById("koshaGuideDetailMeta").textContent = metaParts.join(" · ");
-  document.getElementById("koshaGuideDetailContent").textContent = guide.content || "등록된 본문이 없습니다.";
-  const noteEl = document.getElementById("koshaGuideDetailNote");
-  noteEl.hidden = !guide.note;
-  noteEl.textContent = guide.note ? `비고: ${guide.note}` : "";
-  document.getElementById("koshaGuideDetailActions").innerHTML = viewLinkHtml(guide);
-  document.getElementById("koshaGuideDetailModalOverlay").hidden = false;
-}
-
-function closeKoshaGuideDetailModal() {
-  document.getElementById("koshaGuideDetailModalOverlay").hidden = true;
-}
-
-async function openKoshaGuideDetailById(id) {
-  const cached = state.koshaGuides.find((g) => g.id === id);
-  if (cached) {
-    openKoshaGuideDetailModal(cached);
-    return;
-  }
-  try {
-    const guide = await api(`/api/kosha-guides/${id}`);
-    openKoshaGuideDetailModal(guide);
-  } catch (e) {
-    toast(`상세 정보를 불러오지 못했습니다: ${e.message}`, true);
-  }
-}
-
-export function initKoshaGuideDetailModal() {
-  document.getElementById("koshaGuideDetailCloseBtn").addEventListener("click", closeKoshaGuideDetailModal);
-  document.getElementById("koshaGuideDetailModalOverlay").addEventListener("click", (ev) => {
-    if (ev.target.id === "koshaGuideDetailModalOverlay") closeKoshaGuideDetailModal();
-  });
-  document.addEventListener("keydown", (ev) => {
-    if (ev.key === "Escape" && !document.getElementById("koshaGuideDetailModalOverlay").hidden) closeKoshaGuideDetailModal();
-  });
+    ? `<a href="${escapeHtml(g.file_link)}" target="_blank" rel="noopener">${escapeHtml(g.title)}</a>`
+    : `<span title="원문 링크가 등록되어 있지 않습니다">${escapeHtml(g.title)}</span>`;
 }
 
 let koshaGuideFilterText = "";
@@ -120,10 +66,9 @@ function renderKoshaGuidesTable() {
           <tr>
             <td>${escapeHtml(g.code || "-")}</td>
             <td>${escapeHtml(g.field || "-")}</td>
-            <td><button type="button" class="link-btn" data-guide-detail="${g.id}" title="본문 전체 보기">${escapeHtml(g.title)}</button></td>
+            <td>${titleCell(g)}</td>
             <td>${fmtDate(g.issued_date)}</td>
             <td>
-              ${viewLinkHtml(g)}
               <button class="link-btn" data-edit-kosha-guide="${g.id}">수정</button>
               <button class="link-btn" data-delete-kosha-guide="${g.id}">삭제</button>
             </td>
@@ -132,9 +77,6 @@ function renderKoshaGuidesTable() {
       </tbody>
     </table>
   `;
-  el.querySelectorAll("[data-guide-detail]").forEach((btn) => {
-    btn.addEventListener("click", () => openKoshaGuideDetailById(Number(btn.dataset.guideDetail)));
-  });
   el.querySelectorAll("[data-edit-kosha-guide]").forEach((btn) => {
     btn.addEventListener("click", () => startEditKoshaGuide(Number(btn.dataset.editKoshaGuide)));
   });
@@ -238,25 +180,21 @@ async function searchKoshaGuides() {
     }
     el.innerHTML = `
       <table>
-        <thead><tr><th>지침번호</th><th>분야</th><th>제목</th><th>매칭 위치</th><th>미리보기</th><th>제개정일자</th><th></th></tr></thead>
+        <thead><tr><th>지침번호</th><th>분야</th><th>제목</th><th>매칭 위치</th><th>미리보기</th><th>제개정일자</th></tr></thead>
         <tbody>
           ${results.map((r) => `
             <tr>
               <td>${escapeHtml(r.code || "-")}</td>
               <td>${escapeHtml(r.field || "-")}</td>
-              <td><button type="button" class="link-btn" data-guide-detail="${r.id}" title="본문 전체 보기">${escapeHtml(r.title)}</button></td>
+              <td>${titleCell(r)}</td>
               <td>${KOSHA_GUIDE_MATCHED_IN_LABEL[r.matched_in] || "-"}</td>
               <td class="search-snippet">${r.snippet ? highlightSnippet(r.snippet, query) : '<span class="hint">-</span>'}</td>
               <td>${fmtDate(r.issued_date)}</td>
-              <td>${viewLinkHtml(r)}</td>
             </tr>
           `).join("")}
         </tbody>
       </table>
     `;
-    el.querySelectorAll("[data-guide-detail]").forEach((btn) => {
-      btn.addEventListener("click", () => openKoshaGuideDetailById(Number(btn.dataset.guideDetail)));
-    });
   } catch (e) {
     if (mySeq !== koshaGuideSearchSeq) return;
     el.innerHTML = `<div class="empty">검색 실패: ${escapeHtml(e.message)}</div>`;
