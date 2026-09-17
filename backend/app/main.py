@@ -70,7 +70,6 @@ def _set_last_maintenance_at(db, when: datetime.datetime) -> None:
 
 def _scheduled_sync():
     from . import content_cache_service, settings_store
-    from .email_service import send_revision_alert
     from .law_api import build_client
     from .sync_service import sync_all
 
@@ -80,8 +79,6 @@ def _scheduled_sync():
         client = build_client(oc)
         new_revisions, errors = sync_all(db, client)
         content_cache_service.refresh_tracked_law_content(db, client)
-        if new_revisions:
-            send_revision_alert(db, new_revisions)
         if errors:
             logger.warning("자동 동기화 중 오류: %s", errors)
         logger.info("자동 동기화 완료: 신규 개정 %d건", len(new_revisions))

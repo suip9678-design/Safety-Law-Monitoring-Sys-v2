@@ -1,10 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from .. import models, schemas, settings_store
 from ..config import settings as env_settings
 from ..database import get_db
-from ..email_service import EmailNotConfigured, send_test_email
 
 router = APIRouter(prefix="/api/settings", tags=["settings"])
 
@@ -20,24 +19,15 @@ _HELP_SHOWN_KEY = "help_shown_once"
 @router.get("", response_model=schemas.SettingsOut)
 def get_settings(db: Session = Depends(get_db)):
     values = settings_store.get_all(db)
-    smtp_configured = bool(values.get("smtp_host") and values.get("alert_emails"))
     return schemas.SettingsOut(
         demo_mode=not bool(values.get("law_api_oc")),
         law_api_oc_set=bool(values.get("law_api_oc")),
         law_api_oc=values.get("law_api_oc") or None,
         auto_sync_interval_hours=env_settings.AUTO_SYNC_INTERVAL_HOURS,
-        smtp_configured=smtp_configured,
-        smtp_host=values.get("smtp_host") or None,
-        smtp_port=int(values.get("smtp_port") or 587),
-        smtp_use_tls=str(values.get("smtp_use_tls", "true")).lower() in ("1", "true", "yes", "on"),
-        smtp_user=values.get("smtp_user") or None,
-        smtp_from=values.get("smtp_from") or None,
-        alert_emails=values.get("alert_emails") or None,
         new_admrul_keywords=values.get("new_admrul_keywords") or None,
         new_admrul_department=values.get("new_admrul_department") or None,
         new_admrul_since_date=values.get("new_admrul_since_date") or None,
         full_law_cache_enabled=str(values.get("full_law_cache_enabled", "false")).lower() in ("1", "true", "yes", "on"),
-        email_feature_enabled=env_settings.FEATURE_EMAIL_ENABLED,
         news_ticker_enabled=str(values.get("news_ticker_enabled", "true")).lower() in ("1", "true", "yes", "on"),
         news_source_moel_url=values.get("news_source_moel_url") or None,
         news_source_kosha_url=values.get("news_source_kosha_url") or None,
@@ -51,20 +41,6 @@ def update_settings(payload: schemas.SettingsUpdate, db: Session = Depends(get_d
     updates = {}
     if payload.law_api_oc is not None:
         updates["law_api_oc"] = payload.law_api_oc
-    if payload.smtp_host is not None:
-        updates["smtp_host"] = payload.smtp_host
-    if payload.smtp_port is not None:
-        updates["smtp_port"] = str(payload.smtp_port)
-    if payload.smtp_use_tls is not None:
-        updates["smtp_use_tls"] = "true" if payload.smtp_use_tls else "false"
-    if payload.smtp_user is not None:
-        updates["smtp_user"] = payload.smtp_user
-    if payload.smtp_password is not None:
-        updates["smtp_password"] = payload.smtp_password
-    if payload.smtp_from is not None:
-        updates["smtp_from"] = payload.smtp_from
-    if payload.alert_emails is not None:
-        updates["alert_emails"] = payload.alert_emails
     if payload.new_admrul_keywords is not None:
         updates["new_admrul_keywords"] = payload.new_admrul_keywords
     if payload.new_admrul_department is not None:
@@ -102,15 +78,4 @@ def mark_help_shown(db: Session = Depends(get_db)):
     else:
         row.value = "1"
     db.commit()
-    return None
-
-
-@router.post("/test-email", status_code=204)
-def test_email(db: Session = Depends(get_db)):
-    try:
-        send_test_email(db)
-    except EmailNotConfigured as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    except Exception as exc:  # noqa: BLE001
-        raise HTTPException(status_code=502, detail=f"메일 발송에 실패했습니다: {exc}") from exc
     return None

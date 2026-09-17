@@ -16,7 +16,7 @@
   조회해 공포일자/공포번호/시행일자가 바뀌었는지 자동으로 비교하고, 바뀐 건만 "개정 이력"으로
   쌓아줍니다.
 - 회사의 절차서/지침서/작업표준을 법령과 **수동으로 매핑**해두면, 특정 법령이 개정될 때 어떤 문서를
-  검토해야 하는지 자동으로 보여주고(대시보드), 설정 시 담당자에게 이메일로도 알려줍니다.
+  검토해야 하는지 자동으로 보여줍니다(대시보드).
 
 ## 핵심 기능 vs 확장 기능
 
@@ -51,8 +51,7 @@
    법령으로 직접 매핑하지 않았더라도 그 키워드가 이름/본문에 들어간 법령·고시가 개정될 때만 자동으로
    "개정 필요 사항"에 표시됩니다(`#태그매칭` 배지로 구분). 본문 매칭은 아래 본문 캐시가 있어야 동작하며,
    추적 중인 법령의 본문은 동기화할 때마다 자동으로 갱신됩니다. (확장)
-6. **이메일 알림**: SMTP 설정 시 신규 개정 감지될 때마다 영향받는 문서 목록과 함께 이메일 발송 (확장)
-7. **법령 본문검색**: 국가법령정보센터 API는 법령명 검색만 지원하고 전체 법령 대상 본문검색은
+6. **법령 본문검색**: 국가법령정보센터 API는 법령명 검색만 지원하고 전체 법령 대상 본문검색은
    제공하지 않으므로, 설정 탭의 "법령 본문 캐시"에 미리 받아둔 본문을 대상으로 검색합니다. "법령
    마스터" 탭 검색창의 "본문검색" 토글을 켜면 법령명이 아니라 본문 내용으로 찾습니다. (확장)
 
@@ -79,7 +78,7 @@ cd backend
 python3 -m venv .venv
 source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
-cp .env.example .env         # 필요시 LAW_API_OC, SMTP 정보 등 입력
+cp .env.example .env         # 필요시 LAW_API_OC 등 입력
 uvicorn app.main:app --reload --port 8000
 ```
 
@@ -127,7 +126,6 @@ Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 2. **회사 문서** 탭에서 보유한 절차서/지침서/작업표준을 등록하면서, "근거 법령" 체크박스에서 관련
    법령·고시를 함께 선택 (나중에 문서를 수정할 때 다시 바꿀 수 있습니다)
 3. 상단의 **지금 동기화**를 눌러 최신 상태를 확인 (최초 동기화는 기준값만 저장하고, 이후 값이 바뀌면 "개정 이력"에 기록됩니다)
-4. **설정** 탭에서 SMTP 정보를 입력하면, 이후 개정이 감지될 때마다 이메일로도 알림을 받습니다
 
 ## 매일 자동으로 확인하기
 
@@ -176,11 +174,18 @@ backend/
     news_service.py       안전보건 뉴스 RSS/Atom 피드 수집 (v2 신규)
     fixtures.py           데모 모드/뉴스 게시판용 예시 데이터
     sync_service.py       법령 상세 조회 후 변경 감지 → LawRevision 생성
-    email_service.py      SMTP 알림 메일 발송
     settings_store.py     DB에 저장되는 런타임 설정 (.env를 기본값으로 사용)
     routers/               API 라우터 (laws, revisions, documents, mappings, sync, settings, dashboard, news)
 frontend/
-  index.html / style.css / app.js   대시보드 UI (빌드 불필요)
+  index.html / style.css   대시보드 UI (빌드 불필요)
+  js/                     화면별 ES 모듈 (main.js가 진입점, <script type="module">로 로드)
+    core.js                공통 상태 + API 호출/토스트/날짜포맷 등 기본 헬퍼
+    tabs.js                탭 전환 라우팅
+    dashboard.js / laws.js / revisions.js / doc-revisions.js / documents.js / settings.js / news.js / keyword-search.js
+                            탭(화면)별 로직 - 각각 loadX()/initXTab() 형태로 진입점 제공
+    document-impacts.js    "문서 기준 개정 필요 사항" 표 렌더링 (대시보드/사규 개정 이력 공용)
+    status-actions.js      개정 상태 변경 드롭다운 공통 배선
+    alarm.js / help.js / sync.js   알림 종 / 도움말 모달 / 새로고침(동기화) 버튼
 scripts/
   sync_cli.py             cron 등록용 동기화 스크립트
 ```

@@ -3,7 +3,6 @@ from sqlalchemy.orm import Session
 
 from .. import content_cache_service, models, schemas, settings_store
 from ..database import get_db
-from ..email_service import send_revision_alert
 from ..law_api import build_client
 from ..sync_service import scan_new_admrul, sync_all
 
@@ -27,12 +26,6 @@ def run_sync(db: Session = Depends(get_db)):
     except Exception as exc:  # noqa: BLE001 - 신규 고시 탐색 실패가 전체 동기화를 막으면 안 됨
         new_candidates = []
         errors.append(f"신규 고시 탐색 실패: {exc}")
-
-    if new_revisions:
-        try:
-            send_revision_alert(db, new_revisions)
-        except Exception as exc:  # noqa: BLE001 - don't let email failure break sync
-            errors.append(f"이메일 발송 실패: {exc}")
 
     return schemas.SyncResult(
         checked=laws_before,

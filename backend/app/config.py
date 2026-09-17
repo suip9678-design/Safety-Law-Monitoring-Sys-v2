@@ -58,19 +58,6 @@ class Settings:
     DASHBOARD_USERNAME: str = os.getenv("DASHBOARD_USERNAME", "").strip()
     DASHBOARD_PASSWORD: str = os.getenv("DASHBOARD_PASSWORD", "").strip()
 
-    # 이메일 알림 기능을 화면에 노출할지 여부. 배포판(설치파일 버전)에서는
-    # 일단 이메일 기능을 빼고 배포하기로 해 기본값을 꺼짐으로 두되, 코드
-    # 자체는 남겨둬서 나중에 .env에서 다시 켜기만 하면 되게 한다.
-    FEATURE_EMAIL_ENABLED: bool = _bool(os.getenv("FEATURE_EMAIL_ENABLED"), True)
-
-    SMTP_HOST: str = os.getenv("SMTP_HOST", "").strip()
-    SMTP_PORT: int = int(os.getenv("SMTP_PORT", "587") or "587")
-    SMTP_USE_TLS: bool = _bool(os.getenv("SMTP_USE_TLS"), True)
-    SMTP_USER: str = os.getenv("SMTP_USER", "").strip()
-    SMTP_PASSWORD: str = os.getenv("SMTP_PASSWORD", "").strip()
-    SMTP_FROM: str = os.getenv("SMTP_FROM", "").strip()
-    ALERT_EMAILS: str = os.getenv("ALERT_EMAILS", "").strip()
-
     FRONTEND_DIR: Path = BASE_DIR.parent / "frontend"
 
     # 대시보드 안전보건 뉴스 자동 스크롤 게시판. 고용노동부/안전보건공단

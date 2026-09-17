@@ -53,7 +53,7 @@ CPython 재배포판을 대신 사용합니다.)
    받아 `site-packages`에 풀어 넣는다.
 3. `scripts/stage_app.sh` - `backend/`, `frontend/` 소스를
    `build/payload/app`에 복사하고, 배포판 기본 `.env`
-   (`FEATURE_EMAIL_ENABLED=false`, `FULL_LAW_CACHE_ENABLED=true`)를 만든다.
+   (`FULL_LAW_CACHE_ENABLED=true`)를 만든다.
 4. `launcher/main.go` - 바탕화면 실행 파일. 더블클릭하면 서버가 떠 있는지
    확인하고, 없으면 콘솔 창 없이(`pythonw.exe` + `CREATE_NO_WINDOW`)
    백그라운드로 `-m uvicorn ...`을 띄운 뒤 `/api/health`가 응답할 때까지

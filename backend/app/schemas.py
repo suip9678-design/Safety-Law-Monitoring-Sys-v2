@@ -172,18 +172,10 @@ class SettingsOut(BaseModel):
     law_api_oc_set: bool
     law_api_oc: str | None = None
     auto_sync_interval_hours: int
-    smtp_configured: bool
-    smtp_host: str | None = None
-    smtp_port: int | None = None
-    smtp_use_tls: bool | None = None
-    smtp_user: str | None = None
-    smtp_from: str | None = None
-    alert_emails: str | None = None
     new_admrul_keywords: str | None = None
     new_admrul_department: str | None = None
     new_admrul_since_date: str | None = None
     full_law_cache_enabled: bool = False
-    email_feature_enabled: bool = True
     news_ticker_enabled: bool = True
     news_source_moel_url: str | None = None
     news_source_kosha_url: str | None = None
@@ -193,13 +185,6 @@ class SettingsOut(BaseModel):
 
 class SettingsUpdate(BaseModel):
     law_api_oc: str | None = None
-    smtp_host: str | None = None
-    smtp_port: int | None = None
-    smtp_use_tls: bool | None = None
-    smtp_user: str | None = None
-    smtp_password: str | None = None
-    smtp_from: str | None = None
-    alert_emails: str | None = None
     new_admrul_keywords: str | None = None
     new_admrul_department: str | None = None
     new_admrul_since_date: str | None = None

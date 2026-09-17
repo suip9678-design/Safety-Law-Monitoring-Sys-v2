@@ -1,9 +1,9 @@
 """DB-backed runtime settings with .env as the initial default.
 
-Lets the user change the law.go.kr OC key and SMTP settings from the
-dashboard's 설정 tab without restarting the server. Values are stored in
-the app_settings table; anything not overridden there falls back to the
-value from config.settings (i.e. the .env file).
+Lets the user change the law.go.kr OC key from the dashboard's 설정 tab
+without restarting the server. Values are stored in the app_settings
+table; anything not overridden there falls back to the value from
+config.settings (i.e. the .env file).
 """
 
 from sqlalchemy.orm import Session
@@ -13,13 +13,6 @@ from .config import settings as env_settings
 
 _KEYS = [
     "law_api_oc",
-    "smtp_host",
-    "smtp_port",
-    "smtp_use_tls",
-    "smtp_user",
-    "smtp_password",
-    "smtp_from",
-    "alert_emails",
     "new_admrul_keywords",
     "new_admrul_department",
     "new_admrul_since_date",
@@ -33,13 +26,6 @@ _KEYS = [
 
 _ENV_DEFAULTS = {
     "law_api_oc": env_settings.LAW_API_OC,
-    "smtp_host": env_settings.SMTP_HOST,
-    "smtp_port": str(env_settings.SMTP_PORT),
-    "smtp_use_tls": "true" if env_settings.SMTP_USE_TLS else "false",
-    "smtp_user": env_settings.SMTP_USER,
-    "smtp_password": env_settings.SMTP_PASSWORD,
-    "smtp_from": env_settings.SMTP_FROM,
-    "alert_emails": env_settings.ALERT_EMAILS,
     "new_admrul_keywords": env_settings.NEW_ADMRUL_KEYWORDS,
     "new_admrul_department": env_settings.NEW_ADMRUL_DEPARTMENT,
     "new_admrul_since_date": env_settings.NEW_ADMRUL_SINCE_DATE,
