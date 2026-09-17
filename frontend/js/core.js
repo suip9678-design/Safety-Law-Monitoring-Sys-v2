@@ -11,6 +11,24 @@ export const state = {
 
 export const SOURCE_TYPE_LABEL = { law: "법령", admrul: "행정규칙" };
 
+// 공포일자를 누르면 법제처(law.go.kr)의 "제정·개정이유" 페이지로 이동시키기
+// 위한 URL. law.go.kr에서 확인된 URL 패턴이라 법률/시행령/시행규칙(law)에만
+// 적용하고, 행정규칙(admrul, 고시/예규/훈령)에는 이 패턴이 통하지 않아 적용하지
+// 않는다 - 법령 마스터/대시보드/개정 이력 어디서나 같은 규칙으로 링크를 만든다.
+export function lawReasonDocUrl({ source_type, external_id, enforcement_date } = {}) {
+  if (source_type !== "law" || !external_id || !enforcement_date) return null;
+  const params = new URLSearchParams({
+    lsiSeq: external_id,
+    lsId: "",
+    efYd: enforcement_date,
+    chrClsCd: "010202",
+    urlMode: "lsEfInfoR",
+    viewCls: "lsRvsDocInfoR",
+    ancYnChk: "0",
+  });
+  return `https://www.law.go.kr/lsInfoP.do?${params.toString()}#`;
+}
+
 export async function api(path, options = {}) {
   const res = await fetch(path, {
     headers: { "Content-Type": "application/json" },

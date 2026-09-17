@@ -90,6 +90,9 @@ class LawRevisionOut(BaseModel):
     tracked_law_id: int
     tracked_law_name: str = ""
     tracked_law_category: str | None = None
+    tracked_law_source_type: str = ""
+    tracked_law_external_id: str | None = None
+    tracked_law_detail_link: str | None = None
     promulgation_no: str | None
     promulgation_date: str | None
     enforcement_date: str | None

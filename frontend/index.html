@@ -199,6 +199,16 @@
       </div>
 
       <div class="panel-box">
+        <h2>본문 검색</h2>
+        <p class="hint">지침번호·제목뿐 아니라, 등록할 때 본문을 함께 입력해둔 가이드라면 그 내용까지 대상으로 검색합니다.</p>
+        <div class="row">
+          <input id="koshaGuideSearchInput" type="text" placeholder="키워드로 검색 (예: 밀폐공간)" style="flex: 1;" />
+          <button id="koshaGuideSearchBtn" class="btn btn-primary">검색</button>
+        </div>
+        <div id="koshaGuideSearchResults" class="table-wrap"></div>
+      </div>
+
+      <div class="panel-box">
         <h2>등록된 KOSHA 가이드</h2>
         <p class="hint">
           제목을 누르면 동기화/등록 시 받아온 원문 링크로 바로 이동합니다. 원문 링크가 없는 항목은
@@ -208,16 +218,6 @@
           <input id="koshaGuideFilterInput" type="text" placeholder="지침번호/제목/분야로 빠르게 찾기" />
         </div>
         <div id="koshaGuidesTable" class="table-wrap"></div>
-      </div>
-
-      <div class="panel-box">
-        <h2>본문 검색</h2>
-        <p class="hint">지침번호·제목뿐 아니라, 등록할 때 본문을 함께 입력해둔 가이드라면 그 내용까지 대상으로 검색합니다.</p>
-        <div class="row">
-          <input id="koshaGuideSearchInput" type="text" placeholder="키워드로 검색 (예: 밀폐공간)" style="flex: 1;" />
-          <button id="koshaGuideSearchBtn" class="btn btn-primary">검색</button>
-        </div>
-        <div id="koshaGuideSearchResults" class="table-wrap"></div>
       </div>
     </section>
 

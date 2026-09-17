@@ -370,6 +370,9 @@
     return Object.assign({}, rev, {
       tracked_law_name: law ? law.name : "",
       tracked_law_category: law ? law.category : null,
+      tracked_law_source_type: law ? law.source_type : "",
+      tracked_law_external_id: law ? law.external_id : null,
+      tracked_law_detail_link: law ? law.detail_link : null,
       mapped_documents: law
         ? store.mappings.filter((m) => m.tracked_law_id === law.id).map((m) => {
             const doc = store.documents.find((d) => d.id === m.document_id);

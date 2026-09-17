@@ -671,6 +671,14 @@ tr.law-row-alert td:first-child { border-left: 3px solid var(--danger); }
 
 .news-board-item:last-child { border-bottom: none; }
 .news-board-item:hover { background: var(--surface-muted); }
+/* 이미 눌러본(브라우저 방문 기록에 있는) 기사는 제목 글자색을 옅게 해
+   한눈에 구분되게 한다. 전역 "a { color: ... }" 규칙만 있고 :visited를
+   따로 정의하지 않으면 브라우저 기본 방문 색이 그 규칙에 가려져 전혀
+   구분되지 않는다 - 그래서 명시적으로 다시 정의해야 한다. */
+.news-board-item:visited { color: var(--text-subtle); }
+
+/* "안전보건 뉴스" 탭(검색 결과)도 마찬가지 이유로 명시적 :visited가 필요하다. */
+#newsPageResults a:visited { color: var(--text-subtle); }
 
 .news-board-source {
   display: inline-block;

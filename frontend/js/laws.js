@@ -1,7 +1,7 @@
 // "법령 마스터" 탭: 추적 중인 법령/고시 목록, 신규 검색·등록, 플랜트건설업
 // 기본 법령 세트 일괄 추가.
 
-import { state, api, toast, fmtDate, fmtDateTime, escapeHtml, statusBadge, SOURCE_TYPE_LABEL } from "./core.js";
+import { state, api, toast, fmtDate, fmtDateTime, escapeHtml, statusBadge, SOURCE_TYPE_LABEL, lawReasonDocUrl } from "./core.js";
 import { viewRevisionsForLaw } from "./tabs.js";
 
 // 플랜트건설업에 저촉되는 안전보건 관련 법령·고시 기본 세트.
@@ -64,22 +64,6 @@ export async function loadLaws() {
   }
 }
 
-// law.go.kr에서 확인된 URL 패턴이라 행정규칙(admrul)에는 적용하지 않음.
-function lawReasonDocUrl(l) {
-  // 공포일자 클릭 -> "제정·개정이유" 탭
-  if (l.source_type !== "law" || !l.external_id || !l.current_enforcement_date) return null;
-  const params = new URLSearchParams({
-    lsiSeq: l.external_id,
-    lsId: "",
-    efYd: l.current_enforcement_date,
-    chrClsCd: "010202",
-    urlMode: "lsEfInfoR",
-    viewCls: "lsRvsDocInfoR",
-    ancYnChk: "0",
-  });
-  return `https://www.law.go.kr/lsInfoP.do?${params.toString()}#`;
-}
-
 function renderLawsTable() {
   const el = document.getElementById("lawsTable");
   if (!state.laws.length) {
@@ -108,7 +92,11 @@ function renderLawsTable() {
       rows.push(`<tr class="law-group-row"><td colspan="8">${LAW_CATEGORY_GROUP_LABEL[rank]} <span class="hint">${count}건</span></td></tr>`);
       lastRank = rank;
     }
-    const reasonUrl = lawReasonDocUrl(l);
+    const reasonUrl = lawReasonDocUrl({
+      source_type: l.source_type,
+      external_id: l.external_id,
+      enforcement_date: l.current_enforcement_date,
+    });
     const promCell = reasonUrl
       ? `<a href="${escapeHtml(reasonUrl)}" target="_blank" rel="noopener" title="법령정보센터: 제정·개정이유 보기">${fmtDate(l.current_promulgation_date)}</a>`
       : fmtDate(l.current_promulgation_date);

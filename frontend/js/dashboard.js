@@ -2,7 +2,7 @@
 // 개정 필요 사항, 신규 제정 고시 후보, 알림 종 갱신, 뉴스 게시판 로드까지
 // 진입점 하나(loadDashboard)로 묶는다.
 
-import { api, toast, escapeHtml, fmtDate, fmtDateTime } from "./core.js";
+import { api, toast, escapeHtml, fmtDate, fmtDateTime, lawReasonDocUrl } from "./core.js";
 import { renderDocumentImpactsList } from "./document-impacts.js";
 import { wireStatusSelects } from "./status-actions.js";
 import { updateAlarmBell } from "./alarm.js";
@@ -34,21 +34,30 @@ export function renderNewAdmrulCandidates(containerId, candidates, emptyMessage)
     <table>
       <thead><tr><th>법령/고시</th><th>구분</th><th>소관부처</th><th>공포일자</th><th>매칭 키워드</th><th></th></tr></thead>
       <tbody>
-        ${candidates.map((c) => `
+        ${candidates.map((c) => {
+        const reasonUrl = lawReasonDocUrl({
+          source_type: c.source_type,
+          external_id: c.external_id,
+          enforcement_date: c.enforcement_date,
+        });
+        return `
           <tr>
             <td>${c.detail_link
               ? `<a href="${escapeHtml(c.detail_link)}" target="_blank" rel="noopener">${escapeHtml(c.name)}</a>`
               : escapeHtml(c.name)}</td>
             <td>${escapeHtml(c.category || "-")}</td>
             <td>${escapeHtml(c.department || "-")}</td>
-            <td>${fmtDate(c.promulgation_date)}</td>
+            <td>${reasonUrl
+              ? `<a href="${escapeHtml(reasonUrl)}" target="_blank" rel="noopener" title="법령정보센터: 제정·개정이유 보기">${fmtDate(c.promulgation_date)}</a>`
+              : fmtDate(c.promulgation_date)}</td>
             <td><span class="hint">${escapeHtml(c.matched_keyword || "-")}</span></td>
             <td>
               <button class="btn btn-primary" data-track-candidate="${c.id}">등록</button>
               <button class="link-btn" data-dismiss-candidate="${c.id}">무시</button>
             </td>
           </tr>
-        `).join("")}
+        `;
+      }).join("")}
       </tbody>
     </table>
   `;

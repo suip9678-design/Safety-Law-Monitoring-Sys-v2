@@ -1,6 +1,6 @@
 // "개정 이력" 탭: 법령/고시 개정 감지 이력 전체 목록, 상태 일괄 변경/삭제.
 
-import { state, api, toast, fmtDate, fmtDateTime, escapeHtml, statusSelect } from "./core.js";
+import { state, api, toast, fmtDate, fmtDateTime, escapeHtml, statusSelect, lawReasonDocUrl } from "./core.js";
 import { wireStatusSelects } from "./status-actions.js";
 import { loadDashboard } from "./dashboard.js";
 
@@ -30,12 +30,23 @@ export function renderRevisionsList(revisions, mode = "full") {
           // 이전 값이 전혀 없으면(previous_*가 모두 비어있으면) 실제 개정이 아니라
           // 법령을 처음 등록할 때 자동 생성된 "최초 확인" 항목임.
           const isInitial = !r.previous_promulgation_date && !r.previous_enforcement_date;
+          const reasonUrl = lawReasonDocUrl({
+            source_type: r.tracked_law_source_type,
+            external_id: r.tracked_law_external_id,
+            enforcement_date: r.enforcement_date,
+          });
+          const nameCell = r.tracked_law_detail_link
+            ? `<a href="${escapeHtml(r.tracked_law_detail_link)}" target="_blank" rel="noopener">${escapeHtml(r.tracked_law_name)}</a>`
+            : escapeHtml(r.tracked_law_name);
+          const promCell = reasonUrl
+            ? `<a href="${escapeHtml(reasonUrl)}" target="_blank" rel="noopener" title="법령정보센터: 제정·개정이유 보기">${fmtDate(r.promulgation_date)}</a>`
+            : fmtDate(r.promulgation_date);
           return `
           <tr>
             ${showCheckbox ? `<td><input type="checkbox" class="revision-row-checkbox" data-revision-id="${r.id}" ${selectedRevisionIds.has(r.id) ? "checked" : ""}></td>` : ""}
-            <td>${escapeHtml(r.tracked_law_name)}${isInitial ? ` <span class="hint">(신규 등록)</span>` : ""}</td>
+            <td>${nameCell}${isInitial ? ` <span class="hint">(신규 등록)</span>` : ""}</td>
             <td>${escapeHtml(r.tracked_law_category || "-")}</td>
-            <td>${fmtDate(r.promulgation_date)}${r.previous_promulgation_date && r.previous_promulgation_date !== r.promulgation_date ? `<br><span class="hint">이전: ${fmtDate(r.previous_promulgation_date)}</span>` : ""}</td>
+            <td>${promCell}${r.previous_promulgation_date && r.previous_promulgation_date !== r.promulgation_date ? `<br><span class="hint">이전: ${fmtDate(r.previous_promulgation_date)}</span>` : ""}</td>
             <td>${fmtDate(r.enforcement_date)}</td>
             <td>${fmtDateTime(r.detected_at)}</td>
             ${showMappedDocs ? `<td>${r.mapped_documents.length ? r.mapped_documents.map(escapeHtml).join(", ") : '<span class="hint">해당 없음</span>'}</td>` : ""}

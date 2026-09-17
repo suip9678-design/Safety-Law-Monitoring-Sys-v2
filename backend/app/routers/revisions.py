@@ -12,6 +12,9 @@ def _to_out(rev: models.LawRevision) -> schemas.LawRevisionOut:
     out = schemas.LawRevisionOut.model_validate(rev)
     out.tracked_law_name = rev.tracked_law.name if rev.tracked_law else ""
     out.tracked_law_category = rev.tracked_law.category if rev.tracked_law else None
+    out.tracked_law_source_type = rev.tracked_law.source_type if rev.tracked_law else ""
+    out.tracked_law_external_id = rev.tracked_law.external_id if rev.tracked_law else None
+    out.tracked_law_detail_link = rev.tracked_law.detail_link if rev.tracked_law else None
     out.mapped_documents = (
         [m.document.title for m in rev.tracked_law.mappings] if rev.tracked_law else []
     )
