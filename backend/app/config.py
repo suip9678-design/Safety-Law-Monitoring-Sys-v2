@@ -27,7 +27,6 @@ class Settings:
     )
 
     LAW_API_OC: str = os.getenv("LAW_API_OC", "").strip()
-    DEMO_MODE: bool = LAW_API_OC == ""
 
     # KOSHA 가이드(KOSHA GUIDE) 동기화용 공공데이터포털 "한국산업안전보건공단_
     # 안전보건법령 스마트검색" Open API. 국가법령정보센터(LAW_API_OC)와는

@@ -3,13 +3,14 @@ import logging
 import zoneinfo
 
 from apscheduler.schedulers.background import BackgroundScheduler
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.staticfiles import StaticFiles
+from sqlalchemy.orm import Session
 
-from . import models
+from . import models, settings_store
 from .auth import BasicAuthMiddleware
 from .config import settings
-from .database import SessionLocal, engine, ensure_columns
+from .database import SessionLocal, engine, ensure_columns, get_db
 from .routers import (
     content_cache,
     dashboard,
@@ -219,8 +220,15 @@ def on_shutdown():
 
 
 @app.get("/api/health")
-def health():
-    return {"status": "ok", "demo_mode": settings.DEMO_MODE}
+def health(db: Session = Depends(get_db)):
+    # settings.DEMO_MODE(.env 파일 기준, 서버 시작 시 한 번만 읽음)가 아니라
+    # settings_store(대시보드 설정 화면에서 저장한 값이 .env보다 우선함)를
+    # 봐야 한다 - 실제 법령/KOSHA 검색도 전부 이 값을 쓰므로(routers/laws.py,
+    # sync.py 등), 상단 "데모 모드" 배지도 여기 맞춰야 실제 동작과 어긋나지
+    # 않는다. .env가 아니라 설정 화면에서만 OC 키를 입력해둔 경우, 예전에는
+    # 실제로는 정상 연결되어 있는데도 배지가 계속 "데모 모드"로 잘못 표시됐다.
+    demo_mode = not bool(settings_store.get(db, "law_api_oc"))
+    return {"status": "ok", "demo_mode": demo_mode}
 
 
 if settings.FRONTEND_DIR.exists():
