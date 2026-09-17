@@ -29,6 +29,7 @@
     <button class="tab-btn active" data-tab="dashboard">대시보드</button>
     <button class="tab-btn" data-tab="laws">법령 마스터</button>
     <button class="tab-btn" data-tab="revisions">개정 이력</button>
+    <button class="tab-btn" data-tab="kosha-guides">KOSHA 가이드</button>
     <button class="tab-btn" data-tab="keyword-search">키워드 검색</button>
     <span class="tabs-divider" title="법령 개정 확인(핵심 기능)이 안정적으로 자리잡은 뒤 점진적으로 확장해나가는 기능입니다">확장 기능</span>
     <button class="tab-btn" data-tab="documents">사규</button>
@@ -128,6 +129,79 @@
       </div>
       <div id="revisionsTable" class="table-wrap"></div>
     </section>
+
+    <section id="tab-kosha-guides" class="tab-panel">
+      <div class="panel-box">
+        <div class="row" style="justify-content: space-between; margin-bottom: 0;">
+          <h2 style="margin: 0;">KOSHA 가이드</h2>
+          <div class="row" style="margin-bottom: 0;">
+            <button id="koshaGuideSyncBtn" class="btn">API로 동기화</button>
+            <button id="koshaGuideAddBtn" class="btn btn-primary">+ 가이드 추가</button>
+          </div>
+        </div>
+        <p class="hint">
+          한국산업안전보건공단(KOSHA)이 발간하는 기술지침(KOSHA GUIDE)을 관리하는 화면입니다. 설정 &gt; "KOSHA
+          가이드 Open API"에 공공데이터포털 인증키를 저장해뒀다면 <b>"API로 동기화"</b> 버튼으로 자동으로 채울 수
+          있고, 그 외에는 아래 <b>"일괄 등록"</b>에 갖고 계신 목록을 붙여넣거나 <b>"가이드 추가"</b>로 한 건씩
+          입력해두면 됩니다. 어느 방식이든 등록해두면 이 화면과 아래 키워드 검색에서 찾을 수 있습니다.
+        </p>
+        <p id="koshaGuideSyncStatus" class="hint"></p>
+      </div>
+
+      <div class="panel-box">
+        <h2>키워드 검색</h2>
+        <p class="hint">등록해둔 KOSHA 가이드의 지침번호·제목·본문(입력해뒀다면)을 대상으로 검색합니다.</p>
+        <div class="row">
+          <input id="koshaGuideSearchInput" type="text" placeholder="키워드로 검색 (예: 밀폐공간)" style="flex: 1;" />
+          <button id="koshaGuideSearchBtn" class="btn btn-primary">검색</button>
+        </div>
+        <div id="koshaGuideSearchResults" class="table-wrap"></div>
+      </div>
+
+      <div class="panel-box">
+        <h2>일괄 등록</h2>
+        <p class="hint">
+          한 줄에 하나씩, <b>지침번호, 분야, 제목, 제개정일자(YYYYMMDD), 링크</b> 순서로 쉼표(,)나 탭으로 구분해서
+          붙여넣으세요. 지침번호가 이미 등록되어 있으면 그 항목을 덮어쓰고, 없으면 새로 추가합니다(같은 목록을
+          다시 붙여넣어도 중복 등록되지 않습니다). 지침번호를 모르면 맨 앞을 비워두고 쉼표만 남겨도 됩니다.<br />
+          예) <code>G-68-2022,안전분야,밀폐공간 작업 안전보건에 관한 기술지침,20220401,https://example.com/guide.pdf</code>
+        </p>
+        <textarea id="koshaGuideBulkInput" rows="6" placeholder="G-68-2022,안전분야,밀폐공간 작업 안전보건에 관한 기술지침,20220401,https://..."></textarea>
+        <div class="form-actions">
+          <button id="koshaGuideBulkImportBtn" class="btn">붙여넣은 목록 일괄 등록</button>
+          <span id="koshaGuideBulkResult" class="hint"></span>
+        </div>
+      </div>
+
+      <div class="panel-box">
+        <h2>등록된 KOSHA 가이드</h2>
+        <div class="row">
+          <input id="koshaGuideFilterInput" type="text" placeholder="지침번호/제목/분야로 빠르게 찾기" />
+        </div>
+        <div id="koshaGuidesTable" class="table-wrap"></div>
+      </div>
+    </section>
+
+    <div id="koshaGuideModalOverlay" class="modal-overlay" hidden>
+      <div class="modal-box">
+        <button type="button" id="koshaGuideModalCloseBtn" class="modal-close" title="닫기" aria-label="닫기">&times;</button>
+        <h2 id="koshaGuideFormTitle">가이드 추가</h2>
+        <form id="koshaGuideForm" class="grid-form">
+          <input type="hidden" id="koshaGuideId" />
+          <label>지침번호 <input id="koshaGuideCode" type="text" placeholder="G-68-2022" /></label>
+          <label>분야 <input id="koshaGuideField" type="text" placeholder="안전분야" /></label>
+          <label class="full">제목 <input id="koshaGuideTitle" type="text" required /></label>
+          <label>제개정일자 <input id="koshaGuideIssuedDate" type="text" placeholder="YYYYMMDD" /></label>
+          <label>원문 링크 <input id="koshaGuideFileLink" type="text" /></label>
+          <label class="full">본문(선택 - 입력해두면 키워드 검색 대상에 포함됩니다) <textarea id="koshaGuideContent"></textarea></label>
+          <label class="full">비고 <textarea id="koshaGuideNote"></textarea></label>
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary">저장</button>
+            <button type="button" id="koshaGuideCancelBtn" class="btn">취소</button>
+          </div>
+        </form>
+      </div>
+    </div>
 
     <section id="tab-keyword-search" class="tab-panel">
       <div class="panel-box">
@@ -238,6 +312,7 @@
           <a href="#help-dashboard">대시보드</a>
           <a href="#help-laws">법령 마스터</a>
           <a href="#help-revisions">개정 이력</a>
+          <a href="#help-kosha-guides">KOSHA 가이드</a>
           <a href="#help-keyword">키워드 검색</a>
           <a href="#help-documents">사규 / 사규 개정 이력</a>
           <a href="#help-settings">설정</a>
@@ -288,6 +363,17 @@
             검토 담당자가 실제로 사규에 반영했는지 확인하며 상태를 바꿔나가는 용도입니다.</p>
           </section>
 
+          <section id="help-kosha-guides">
+            <h3>KOSHA 가이드</h3>
+            <p>한국산업안전보건공단(KOSHA)이 발간하는 기술지침(KOSHA GUIDE)을 등록해서 관리하는 화면입니다. 세 가지 방법으로 채울 수 있습니다:</p>
+            <ul>
+              <li><b>API로 동기화</b>: 공공데이터포털에서 "한국산업안전보건공단_안전보건법령 스마트검색" API 활용신청이 승인되면, 설정 &gt; "KOSHA 가이드 Open API"에 인증키를 저장한 뒤 이 버튼을 누르면 설정에 등록해둔 키워드로 자동 검색해서 채웁니다.</li>
+              <li><b>가이드 추가</b>: 한 건씩 직접 입력합니다.</li>
+              <li><b>일괄 등록</b>: 갖고 있는 목록을 붙여넣어 한 번에 여러 건을 등록합니다.</li>
+            </ul>
+            <p>어느 방법으로 등록하든 지침번호·제목·본문(입력한 경우)을 대상으로 하는 이 화면 안의 키워드 검색으로 바로 찾을 수 있습니다.</p>
+          </section>
+
           <section id="help-keyword">
             <h3>키워드 검색</h3>
             <p>등록해두었거나 본문 캐시로 미리 받아둔 법령·고시를 대상으로 키워드/문장을 검색합니다. 법령명뿐 아니라 조문 본문까지 검색되므로
@@ -312,6 +398,7 @@
               <li><b>안전보건 뉴스 게시판</b>: 대시보드 게시판에 표시할 고용노동부·안전보건공단·중대재해 뉴스의 RSS/Atom 피드 주소와 표시 여부를 설정합니다. 기본 주소로도 바로 동작하며, "지금 새로고침"으로 즉시 가져올 수 있습니다.</li>
               <li><b>전체 법령 자동 캐시</b>: 부처/키워드에 상관없이 법령·행정규칙 전체를 대상으로 본문을 캐시합니다. 처음 한 번은 대상이 많아 몇 시간 이상 걸릴 수 있지만, 이후로는 바뀐 것만 다시 받아와 빨라집니다. 매일 새벽 1시 자동 실행 여부를 켜고 끌 수 있습니다.</li>
               <li><b>국가법령정보센터 Open API</b>: OC 키를 입력/변경합니다. 비워두면 데모 데이터로 동작합니다.</li>
+              <li><b>KOSHA 가이드 Open API</b>: 공공데이터포털 "안전보건법령 스마트검색" API 인증키/요청 URL/동기화 키워드를 설정합니다. KOSHA 가이드 탭의 "API로 동기화" 버튼이 이 설정을 사용합니다.</li>
               <li><b>자동 동기화</b>: 서버가 실행되어 있는 동안 자동으로 몇 시간마다 동기화할지 보여줍니다 (.env 설정, 관리자 영역).</li>
             </ul>
           </section>
@@ -443,6 +530,29 @@
           <button id="saveOcBtn" class="btn btn-primary">저장</button>
         </div>
         <p id="ocStatus" class="hint"></p>
+      </div>
+
+      <div class="panel-box">
+        <h2>KOSHA 가이드 Open API (스마트검색)</h2>
+        <p class="hint">
+          공공데이터포털에서 "한국산업안전보건공단_안전보건법령 스마트검색" API 활용신청이 승인되면 여기에 인증키를
+          입력하고 <b>KOSHA 가이드</b> 탭의 "동기화"를 눌러 KOSHA GUIDE를 자동으로 채울 수 있습니다.
+          인증키는 공공데이터포털 활용신청 상세페이지의 <b>"일반 인증키"</b>를 그대로 붙여넣으면 됩니다(Encoding/Decoding
+          어느 쪽이든 상관없습니다). <b>요청 URL 주의</b>: 그 페이지의 "End Point" 칸에는 서비스 URL
+          (<code>.../srch</code>)만 나오고 뒤에 붙는 오퍼레이션 경로(<code>/smartSearch</code>)가 빠져 있으니,
+          아래 기본값처럼 <code>/smartSearch</code>까지 붙은 형태여야 동작합니다.
+        </p>
+        <form id="koshaGuideApiForm" class="grid-form">
+          <label>인증키(서비스키) <input id="koshaGuideApiKey" type="text" placeholder="공공데이터포털에서 발급받은 인증키" /></label>
+          <label>요청 URL <input id="koshaGuideApiUrl" type="text" placeholder="https://apis.data.go.kr/..." /></label>
+          <label class="full">동기화 검색 키워드(콤마로 구분) <input id="koshaGuideSyncKeywords" type="text" placeholder="안전보건, 산업안전, 중대재해" />
+            <span class="hint">스마트검색은 "전체 목록 조회"가 아니라 키워드 검색이라, 여기 등록한 키워드로 차례로 검색해 KOSHA GUIDE로 분류되는 결과만 모읍니다.</span>
+          </label>
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary">저장</button>
+          </div>
+        </form>
+        <p id="koshaGuideApiStatus" class="hint"></p>
       </div>
 
       <div class="panel-box">

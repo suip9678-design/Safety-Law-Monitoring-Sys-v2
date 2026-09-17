@@ -166,6 +166,13 @@ export async function loadSettings() {
       ? "OC 키가 설정되지 않아 데모 데이터로 동작 중입니다."
       : `현재 동기화된 OC 키: ${s.law_api_oc} (실제 국가법령정보센터 API로 동작 중)`;
 
+    document.getElementById("koshaGuideApiKey").value = s.kosha_guide_api_key || "";
+    document.getElementById("koshaGuideApiUrl").value = s.kosha_guide_api_url || "";
+    document.getElementById("koshaGuideSyncKeywords").value = s.kosha_guide_sync_keywords || "";
+    document.getElementById("koshaGuideApiStatus").textContent = s.kosha_guide_api_key_set
+      ? "인증키가 저장되어 있습니다. KOSHA 가이드 탭에서 \"API로 동기화\"를 눌러보세요."
+      : "아직 인증키가 없습니다. 키를 저장하면 KOSHA 가이드 탭에서 자동 동기화를 쓸 수 있습니다.";
+
     document.getElementById("autoSyncHint").textContent = s.auto_sync_interval_hours > 0
       ? `서버가 실행 중인 동안 ${s.auto_sync_interval_hours}시간마다 자동으로 동기화합니다. (.env의 AUTO_SYNC_INTERVAL_HOURS)`
       : "자동 동기화가 꺼져 있습니다. (.env의 AUTO_SYNC_INTERVAL_HOURS=0)";
@@ -254,6 +261,26 @@ export function initSettingsForms() {
       loadSettings();
     } catch (e) {
       toast(`저장 실패: ${e.message}`, true);
+    }
+  });
+
+  document.getElementById("koshaGuideApiForm").addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    const payload = {
+      kosha_guide_api_key: document.getElementById("koshaGuideApiKey").value,
+      kosha_guide_api_url: document.getElementById("koshaGuideApiUrl").value,
+      kosha_guide_sync_keywords: document.getElementById("koshaGuideSyncKeywords").value,
+    };
+    const btn = ev.target.querySelector('button[type="submit"]');
+    btn.disabled = true;
+    try {
+      await api("/api/settings", { method: "PUT", body: JSON.stringify(payload) });
+      toast("KOSHA 가이드 Open API 설정을 저장했습니다.");
+      loadSettings();
+    } catch (e) {
+      toast(`저장 실패: ${e.message}`, true);
+    } finally {
+      btn.disabled = false;
     }
   });
 

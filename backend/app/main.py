@@ -10,7 +10,18 @@ from . import models
 from .auth import BasicAuthMiddleware
 from .config import settings
 from .database import SessionLocal, engine, ensure_columns
-from .routers import content_cache, dashboard, documents, laws, mappings, news, revisions, settings as settings_router, sync
+from .routers import (
+    content_cache,
+    dashboard,
+    documents,
+    kosha_guides,
+    laws,
+    mappings,
+    news,
+    revisions,
+    settings as settings_router,
+    sync,
+)
 
 logger = logging.getLogger("safety_law_tracker")
 
@@ -37,6 +48,7 @@ app.include_router(settings_router.router)
 app.include_router(dashboard.router)
 app.include_router(content_cache.router)
 app.include_router(news.router)
+app.include_router(kosha_guides.router)
 
 _scheduler: BackgroundScheduler | None = None
 

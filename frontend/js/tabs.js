@@ -5,6 +5,7 @@ import { state } from "./core.js";
 import { loadDashboard } from "./dashboard.js";
 import { loadLaws } from "./laws.js";
 import { loadRevisions } from "./revisions.js";
+import { loadKoshaGuides } from "./kosha-guide.js";
 import { loadDocuments } from "./documents.js";
 import { loadDocRevisions } from "./doc-revisions.js";
 import { loadSettings } from "./settings.js";
@@ -34,6 +35,7 @@ export function loadTab(tab) {
   if (tab === "dashboard") loadDashboard();
   if (tab === "laws") loadLaws();
   if (tab === "revisions") loadRevisions();
+  if (tab === "kosha-guides") loadKoshaGuides();
   if (tab === "documents") loadDocuments();
   if (tab === "doc-revisions") loadDocRevisions();
   if (tab === "settings") loadSettings();

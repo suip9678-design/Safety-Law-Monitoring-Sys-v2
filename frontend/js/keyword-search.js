@@ -5,7 +5,7 @@ import { activateTab } from "./tabs.js";
 
 const MATCHED_IN_LABEL = { name: "법령명", content: "본문" };
 
-function highlightSnippet(snippet, query) {
+export function highlightSnippet(snippet, query) {
   const escaped = escapeHtml(snippet);
   const q = escapeHtml(query);
   if (!q) return escaped;

@@ -167,10 +167,64 @@ class MappingOut(BaseModel):
     note: str | None
 
 
+class KoshaGuideCreate(BaseModel):
+    code: str | None = None
+    field: str | None = None
+    title: str
+    issued_date: str | None = None
+    file_link: str | None = None
+    content: str | None = None
+    note: str | None = None
+
+
+class KoshaGuideOut(KoshaGuideCreate):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    created_at: UtcDateTime
+    updated_at: UtcDateTime
+
+
+class KoshaGuideSearchResult(BaseModel):
+    id: int
+    code: str | None = None
+    field: str | None = None
+    title: str
+    issued_date: str | None = None
+    file_link: str | None = None
+    # 검색어가 지침번호/제목/본문 중 어디서 매칭됐는지. 본문이 있으면(더
+    # 구체적인 정보라) 제목/지침번호보다 우선한다.
+    matched_in: str = "title"
+    # matched_in이 "content"일 때 검색어 주변 발췌문.
+    snippet: str = ""
+
+
+class KoshaGuideBulkImportItems(BaseModel):
+    items: list[KoshaGuideCreate]
+
+
+class KoshaGuideBulkImportResult(BaseModel):
+    added: int
+    updated: int
+    skipped: int
+
+
+class KoshaGuideSyncResult(BaseModel):
+    keywords_checked: list[str] = []
+    found: int = 0
+    added: int = 0
+    updated: int = 0
+    errors: list[str] = []
+
+
 class SettingsOut(BaseModel):
     demo_mode: bool
     law_api_oc_set: bool
     law_api_oc: str | None = None
+    kosha_guide_api_key_set: bool = False
+    kosha_guide_api_key: str | None = None
+    kosha_guide_api_url: str | None = None
+    kosha_guide_sync_keywords: str | None = None
     auto_sync_interval_hours: int
     new_admrul_keywords: str | None = None
     new_admrul_department: str | None = None
@@ -185,6 +239,9 @@ class SettingsOut(BaseModel):
 
 class SettingsUpdate(BaseModel):
     law_api_oc: str | None = None
+    kosha_guide_api_key: str | None = None
+    kosha_guide_api_url: str | None = None
+    kosha_guide_sync_keywords: str | None = None
     new_admrul_keywords: str | None = None
     new_admrul_department: str | None = None
     new_admrul_since_date: str | None = None

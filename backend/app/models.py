@@ -191,6 +191,40 @@ class ScrapedLawContent(Base):
     )
 
 
+class KoshaGuide(Base):
+    """KOSHA GUIDE(한국산업안전보건공단이 발간하는 기술지침) 라이브러리.
+
+    국가법령정보 공동활용 API와 달리 KOSHA GUIDE는 공개 조회 API가 없고
+    안전보건공단 홈페이지에 개별 PDF로 게시된다. 그래서 사용자가 한 건씩
+    입력하거나(가이드 추가) 갖고 있는 목록을 붙여넣기(일괄 등록)로
+    채워두면, 그 범위 안에서 지침번호/제목/본문(입력해둔 경우)을 대상으로
+    로컬 키워드 검색을 제공한다 - 법령 키워드 검색(ScrapedLawContent)과
+    같은 검색 경험을, 자동 수집이 안 되는 이 데이터셋에 대해서도 제공하는
+    것이 목적이다."""
+
+    __tablename__ = "kosha_guides"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    code: Mapped[str | None] = mapped_column(String(64), nullable=True)  # 지침번호, 예: "G-68-2022"
+    field: Mapped[str | None] = mapped_column(String(64), nullable=True)  # 분야(안전분야/보건분야/화학물질 등, 자유 입력)
+    title: Mapped[str] = mapped_column(String(512))
+    issued_date: Mapped[str | None] = mapped_column(String(16), nullable=True)  # 제개정일자 YYYYMMDD
+    file_link: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    # 본문 텍스트(선택) - 입력해두면 제목/지침번호뿐 아니라 이 내용까지
+    # 키워드 검색 대상에 포함된다. PDF 원문에서 직접 복사해 붙여넣는 것을
+    # 가정하며, 없어도(빈 값이어도) 제목/지침번호 검색은 그대로 동작한다.
+    content: Mapped[str | None] = mapped_column(Text, nullable=True)
+    note: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime, default=now)
+    updated_at: Mapped[datetime.datetime] = mapped_column(DateTime, default=now, onupdate=now)
+
+    # code가 없는(모르는) 항목은 NULL로 저장되고, SQLite는 NULL끼리 서로
+    # 다른 값으로 취급해 유니크 제약에 걸리지 않는다 - 지침번호를 모르는
+    # 여러 건을 등록해도 문제없다. 지침번호가 있는 항목끼리만 중복을 막는다.
+    __table_args__ = (UniqueConstraint("code", name="uq_kosha_guide_code"),)
+
+
 class AppSetting(Base):
     __tablename__ = "app_settings"
 

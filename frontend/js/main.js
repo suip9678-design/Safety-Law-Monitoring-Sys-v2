@@ -5,6 +5,7 @@ import { api } from "./core.js";
 import { initTabs, loadTab } from "./tabs.js";
 import { initLawsTab } from "./laws.js";
 import { initRevisionsTab } from "./revisions.js";
+import { initKoshaGuideForm, initKoshaGuideSearch, initKoshaGuideSync, initKoshaGuideBulkImport } from "./kosha-guide.js";
 import { initDocRevisionsTab } from "./doc-revisions.js";
 import { initDocumentForm } from "./documents.js";
 import { initSettingsForms } from "./settings.js";
@@ -19,6 +20,10 @@ document.addEventListener("DOMContentLoaded", () => {
   initTabs();
   initLawsTab();
   initRevisionsTab();
+  initKoshaGuideForm();
+  initKoshaGuideSearch();
+  initKoshaGuideSync();
+  initKoshaGuideBulkImport();
   initDocRevisionsTab();
   initDocumentForm();
   initSettingsForms();

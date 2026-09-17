@@ -13,6 +13,9 @@ from .config import settings as env_settings
 
 _KEYS = [
     "law_api_oc",
+    "kosha_guide_api_key",
+    "kosha_guide_api_url",
+    "kosha_guide_sync_keywords",
     "new_admrul_keywords",
     "new_admrul_department",
     "new_admrul_since_date",
@@ -26,6 +29,9 @@ _KEYS = [
 
 _ENV_DEFAULTS = {
     "law_api_oc": env_settings.LAW_API_OC,
+    "kosha_guide_api_key": env_settings.KOSHA_GUIDE_API_KEY,
+    "kosha_guide_api_url": env_settings.KOSHA_GUIDE_API_URL,
+    "kosha_guide_sync_keywords": env_settings.KOSHA_GUIDE_SYNC_KEYWORDS,
     "new_admrul_keywords": env_settings.NEW_ADMRUL_KEYWORDS,
     "new_admrul_department": env_settings.NEW_ADMRUL_DEPARTMENT,
     "new_admrul_since_date": env_settings.NEW_ADMRUL_SINCE_DATE,

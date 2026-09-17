@@ -5,6 +5,7 @@
 export const state = {
   laws: [],
   documents: [],
+  koshaGuides: [],
   revisionsLawFilter: null, // { id, name } | null
 };
 

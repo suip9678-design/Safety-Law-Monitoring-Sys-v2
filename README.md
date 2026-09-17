@@ -54,6 +54,11 @@
 6. **법령 본문검색**: 국가법령정보센터 API는 법령명 검색만 지원하고 전체 법령 대상 본문검색은
    제공하지 않으므로, 설정 탭의 "법령 본문 캐시"에 미리 받아둔 본문을 대상으로 검색합니다. "법령
    마스터" 탭 검색창의 "본문검색" 토글을 켜면 법령명이 아니라 본문 내용으로 찾습니다. (확장)
+7. **KOSHA 가이드**: 한국산업안전보건공단(KOSHA)이 발간하는 기술지침(KOSHA GUIDE)을 등록해서
+   관리하는 "개정 이력" 옆의 별도 탭입니다. KOSHA GUIDE는 국가법령정보센터와 달리 공개 조회 API가
+   없어 자동으로 받아오지 못하므로, 공공데이터포털 Open API로 동기화하거나 한 건씩 입력, 또는 갖고
+   있는 목록을 붙여넣기(일괄 등록)로 채워둡니다. 등록해두면 지침번호·제목·본문(입력한 경우)을
+   대상으로 하는 키워드 검색이 그 안에서 바로 동작합니다. (확장)
 
 ## 기술 스택
 
@@ -171,17 +176,18 @@ backend/
     models.py            TrackedLaw / LawRevision / CompanyDocument / DocumentLawMapping / NewsItem / AppSetting
     schemas.py           Pydantic 스키마
     law_api.py           국가법령정보센터 Open API 클라이언트 (+ 데모 클라이언트)
+    kosha_guide_api.py    공공데이터포털 KOSHA 안전보건법령 스마트검색 API 클라이언트
     news_service.py       안전보건 뉴스 RSS/Atom 피드 수집 (v2 신규)
     fixtures.py           데모 모드/뉴스 게시판용 예시 데이터
     sync_service.py       법령 상세 조회 후 변경 감지 → LawRevision 생성
     settings_store.py     DB에 저장되는 런타임 설정 (.env를 기본값으로 사용)
-    routers/               API 라우터 (laws, revisions, documents, mappings, sync, settings, dashboard, news)
+    routers/               API 라우터 (laws, revisions, documents, mappings, sync, settings, dashboard, news, kosha_guides)
 frontend/
   index.html / style.css   대시보드 UI (빌드 불필요)
   js/                     화면별 ES 모듈 (main.js가 진입점, <script type="module">로 로드)
     core.js                공통 상태 + API 호출/토스트/날짜포맷 등 기본 헬퍼
     tabs.js                탭 전환 라우팅
-    dashboard.js / laws.js / revisions.js / doc-revisions.js / documents.js / settings.js / news.js / keyword-search.js
+    dashboard.js / laws.js / revisions.js / doc-revisions.js / documents.js / settings.js / news.js / keyword-search.js / kosha-guide.js
                             탭(화면)별 로직 - 각각 loadX()/initXTab() 형태로 진입점 제공
     document-impacts.js    "문서 기준 개정 필요 사항" 표 렌더링 (대시보드/사규 개정 이력 공용)
     status-actions.js      개정 상태 변경 드롭다운 공통 배선
