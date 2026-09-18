@@ -79,29 +79,20 @@ def sync_one(db: Session, law: models.TrackedLaw, client) -> models.LawRevision 
 
     revision = None
 
-    if is_first_check:
-        if match.get("promulgation_date") or match.get("enforcement_date"):
-            revision = models.LawRevision(
-                tracked_law_id=law.id,
-                promulgation_no=match.get("promulgation_no"),
-                promulgation_date=match.get("promulgation_date"),
-                enforcement_date=match.get("enforcement_date"),
-                previous_promulgation_no=None,
-                previous_promulgation_date=None,
-                previous_enforcement_date=None,
-                review_status="미검토",
-                raw_data=json.dumps(match, ensure_ascii=False),
-            )
-            db.add(revision)
-    elif _changed(law, match):
+    should_record = (
+        bool(match.get("promulgation_date") or match.get("enforcement_date"))
+        if is_first_check
+        else _changed(law, match)
+    )
+    if should_record:
         revision = models.LawRevision(
             tracked_law_id=law.id,
             promulgation_no=match.get("promulgation_no"),
             promulgation_date=match.get("promulgation_date"),
             enforcement_date=match.get("enforcement_date"),
-            previous_promulgation_no=law.current_promulgation_no,
-            previous_promulgation_date=law.current_promulgation_date,
-            previous_enforcement_date=law.current_enforcement_date,
+            previous_promulgation_no=None if is_first_check else law.current_promulgation_no,
+            previous_promulgation_date=None if is_first_check else law.current_promulgation_date,
+            previous_enforcement_date=None if is_first_check else law.current_enforcement_date,
             review_status="미검토",
             raw_data=json.dumps(match, ensure_ascii=False),
         )

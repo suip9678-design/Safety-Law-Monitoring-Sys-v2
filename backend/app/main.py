@@ -124,6 +124,10 @@ def _scheduled_daily_maintenance():
       돌던 작업이다. 하루에 한 번이면 충분한 가벼운 작업(키워드 몇 개로
       검색하는 정도)이라, 사용자가 직접 새로고침을 누르지 않아도 매일
       자동으로 돌도록 여기에 포함했다(별도 켜고 끄는 설정 없이 항상 실행).
+    - 본문 캐시 새로고침(설정 화면의 "본문 캐시 새로고침" 버튼과 동일):
+      추적 중인 법령 + 키워드/소관부처로 찾은 후보의 본문을 다시 받아
+      캐시에 반영한다. 신규 제정 고시 탐지와 같은 키워드/부처 조건을
+      쓰고, 하루 한 번이면 충분해 이 작업 바로 뒤에 묶어 항상 실행한다.
     - 전체 법령 자동 캐시: 상세조회를 수천 건씩 호출하는 무거운 작업이라,
       설정에서 켠 경우에만 실행한다."""
     from . import content_cache_service, settings_store
@@ -141,8 +145,14 @@ def _scheduled_daily_maintenance():
         try:
             new_candidates = scan_new_admrul(db, client, keywords, department, since_date)
             logger.info("신규 제정 고시 자동 탐지 완료: %d건", len(new_candidates))
-        except Exception:  # noqa: BLE001 - 이 작업 실패가 아래 전체 법령 캐시까지 막으면 안 됨
+        except Exception:  # noqa: BLE001 - 이 작업 실패가 아래 작업들까지 막으면 안 됨
             logger.exception("신규 제정 고시 자동 탐지 중 오류")
+
+        try:
+            cached_count = content_cache_service.refresh_candidate_content(db, client, keywords, department)
+            logger.info("본문 캐시 자동 새로고침 완료: %d건", cached_count)
+        except Exception:  # noqa: BLE001 - 이 작업 실패가 아래 전체 법령 캐시까지 막으면 안 됨
+            logger.exception("본문 캐시 자동 새로고침 중 오류")
 
         enabled = settings_store.get(db, "full_law_cache_enabled").strip().lower() in ("1", "true", "yes", "on")
         if enabled:
@@ -177,10 +187,10 @@ def on_startup():
             next_run_time=datetime.datetime.now(_KST) + datetime.timedelta(seconds=20),
         )
         logger.info("안전보건 뉴스 게시판 자동 수집 스케줄러 등록 (%d시간 주기)", settings.NEWS_FETCH_INTERVAL_HOURS)
-    # 신규 제정 고시 탐지 + (설정에서 켠 경우) 전체 법령 자동 캐시를 매일
-    # 새벽 1시(KST)에 함께 실행한다. 전체 법령 자동 캐시는 매번 켜져
-    # 있는지만 여기서 확인하므로, 서버 재시작 없이 설정 화면에서 껐다
-    # 켰다 할 수 있다.
+    # 신규 제정 고시 탐지 + 본문 캐시 새로고침(둘 다 항상 실행) + (설정에서
+    # 켠 경우) 전체 법령 자동 캐시를 매일 새벽 1시(KST)에 함께 실행한다.
+    # 전체 법령 자동 캐시는 매번 켜져 있는지만 여기서 확인하므로, 서버
+    # 재시작 없이 설정 화면에서 껐다 켰다 할 수 있다.
     _scheduler.add_job(
         _scheduled_daily_maintenance,
         "cron",

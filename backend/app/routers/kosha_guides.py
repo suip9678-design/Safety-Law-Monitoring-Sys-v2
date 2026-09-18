@@ -16,6 +16,7 @@ from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
 from .. import kosha_guide_pdf, models, schemas, settings_store
+from ..content_cache_service import _snippet
 from ..config import settings
 from ..database import get_db
 from ..kosha_guide_api import KoshaGuideApiError, build_client
@@ -75,14 +76,6 @@ def list_guides(field: str | None = None, db: Session = Depends(get_db)):
     if field:
         q = q.filter(models.KoshaGuide.field == field)
     return q.order_by(models.KoshaGuide.title).all()
-
-
-def _snippet(content: str, idx: int, needle_len: int, radius: int = 40) -> str:
-    start = max(0, idx - radius)
-    end = min(len(content), idx + needle_len + radius)
-    prefix = "…" if start > 0 else ""
-    suffix = "…" if end < len(content) else ""
-    return f"{prefix}{content[start:end].strip()}{suffix}"
 
 
 @router.get("/search", response_model=list[schemas.KoshaGuideSearchResult])

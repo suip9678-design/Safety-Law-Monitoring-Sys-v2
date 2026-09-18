@@ -58,34 +58,15 @@ def get_settings(db: Session = Depends(get_db)):
     )
 
 
+_BOOL_FIELDS = ("full_law_cache_enabled", "news_ticker_enabled")
+
+
 @router.put("", response_model=schemas.SettingsOut)
 def update_settings(payload: schemas.SettingsUpdate, db: Session = Depends(get_db)):
-    updates = {}
-    if payload.law_api_oc is not None:
-        updates["law_api_oc"] = payload.law_api_oc
-    if payload.kosha_guide_api_key is not None:
-        updates["kosha_guide_api_key"] = payload.kosha_guide_api_key
-    if payload.kosha_guide_api_url is not None:
-        updates["kosha_guide_api_url"] = payload.kosha_guide_api_url
-    if payload.new_admrul_keywords is not None:
-        updates["new_admrul_keywords"] = payload.new_admrul_keywords
-    if payload.new_admrul_department is not None:
-        updates["new_admrul_department"] = payload.new_admrul_department
-    if payload.new_admrul_since_date is not None:
-        updates["new_admrul_since_date"] = payload.new_admrul_since_date
-    if payload.full_law_cache_enabled is not None:
-        updates["full_law_cache_enabled"] = "true" if payload.full_law_cache_enabled else "false"
-    if payload.news_ticker_enabled is not None:
-        updates["news_ticker_enabled"] = "true" if payload.news_ticker_enabled else "false"
-    if payload.news_source_moel_url is not None:
-        updates["news_source_moel_url"] = payload.news_source_moel_url
-    if payload.news_source_kosha_url is not None:
-        updates["news_source_kosha_url"] = payload.news_source_kosha_url
-    if payload.news_source_accident_url is not None:
-        updates["news_source_accident_url"] = payload.news_source_accident_url
-    if payload.news_retention_days is not None:
-        updates["news_retention_days"] = str(payload.news_retention_days)
-
+    updates = payload.model_dump(exclude_unset=True)
+    for key in _BOOL_FIELDS:
+        if key in updates:
+            updates[key] = "true" if updates[key] else "false"
     settings_store.set_values(db, updates)
     return get_settings(db)
 

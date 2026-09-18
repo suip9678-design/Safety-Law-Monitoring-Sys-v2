@@ -50,17 +50,8 @@ class KeywordSearchResult(BaseModel):
     article_link: str | None = None
 
 
-class TrackedLawCreate(BaseModel):
-    source_type: str
-    external_id: str
-    master_id: str | None = None
-    name: str
-    category: str | None = None
-    department: str | None = None
-    promulgation_no: str | None = None
-    promulgation_date: str | None = None
-    enforcement_date: str | None = None
-    detail_link: str | None = None
+class TrackedLawCreate(LawSearchResult):
+    pass
 
 
 class TrackedLawOut(BaseModel):
