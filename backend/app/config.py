@@ -29,23 +29,17 @@ class Settings:
     LAW_API_OC: str = os.getenv("LAW_API_OC", "").strip()
 
     # KOSHA 가이드(KOSHA GUIDE) 동기화용 공공데이터포털 "한국산업안전보건공단_
-    # 안전보건법령 스마트검색" Open API. 국가법령정보센터(LAW_API_OC)와는
-    # 완전히 별개의 키/엔드포인트다. 자세한 내용은 kosha_guide_api.py 상단
-    # 설명 참고. 활용신청 상세페이지의 "End Point" 칸에는 서비스 URL
-    # (.../srch)만 나오고 뒤의 오퍼레이션 경로(/smartSearch)는 빠져 있으니
-    # 붙여서 써야 한다.
+    # 기술지원규정(코샤가이드) 조회서비스" Open API. 국가법령정보센터
+    # (LAW_API_OC)와는 완전히 별개의 키/엔드포인트다. 자세한 내용은
+    # kosha_guide_api.py 상단 설명 참고. 활용신청 상세페이지의 "서비스 URL"
+    # 칸에는 `.../B552468/koshaguide`까지만 나오고 뒤의 오퍼레이션 경로
+    # (/getKoshaGuide)는 빠져 있으니 붙여서 써야 한다. 이 API는 KOSHA
+    # GUIDE 전체 목록을 페이지만 넘겨 받아올 수 있어(검색 키워드 불필요),
+    # 예전 스마트검색 API처럼 동기화용 키워드 목록을 따로 설정해둘 필요가 없다.
     KOSHA_GUIDE_API_KEY: str = os.getenv("KOSHA_GUIDE_API_KEY", "").strip()
     KOSHA_GUIDE_API_URL: str = os.getenv(
         "KOSHA_GUIDE_API_URL",
-        "https://apis.data.go.kr/B552468/srch/smartSearch",
-    ).strip()
-    # 스마트검색은 "전체 목록"이 아니라 키워드 검색 API라, 동기화할 때 이
-    # 키워드들로 차례로 검색해 그 결과 중 KOSHA GUIDE(기술지침)로 분류되는
-    # 것만 모은다. 신규 제정 고시 탐지(NEW_ADMRUL_KEYWORDS)와 같은 기본값을
-    # 써서 바로 동작하게 하되, 설정 화면에서 따로 바꿀 수 있다.
-    KOSHA_GUIDE_SYNC_KEYWORDS: str = os.getenv(
-        "KOSHA_GUIDE_SYNC_KEYWORDS",
-        "안전보건,산업안전,중대재해,위험성평가,유해위험,보건관리,안전관리",
+        "https://apis.data.go.kr/B552468/koshaguide/getKoshaGuide",
     ).strip()
 
     AUTO_SYNC_INTERVAL_HOURS: int = int(os.getenv("AUTO_SYNC_INTERVAL_HOURS", "24") or "0")

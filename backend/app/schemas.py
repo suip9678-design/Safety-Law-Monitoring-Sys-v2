@@ -213,7 +213,6 @@ class KoshaGuideBulkImportResult(BaseModel):
 
 
 class KoshaGuideSyncResult(BaseModel):
-    keywords_checked: list[str] = []
     found: int = 0
     added: int = 0
     updated: int = 0
@@ -231,7 +230,6 @@ class SettingsOut(BaseModel):
     kosha_guide_api_key_set: bool = False
     kosha_guide_api_key: str | None = None
     kosha_guide_api_url: str | None = None
-    kosha_guide_sync_keywords: str | None = None
     auto_sync_interval_hours: int
     new_admrul_keywords: str | None = None
     new_admrul_department: str | None = None
@@ -254,7 +252,6 @@ class SettingsUpdate(BaseModel):
     law_api_oc: str | None = None
     kosha_guide_api_key: str | None = None
     kosha_guide_api_url: str | None = None
-    kosha_guide_sync_keywords: str | None = None
     new_admrul_keywords: str | None = None
     new_admrul_department: str | None = None
     new_admrul_since_date: str | None = None

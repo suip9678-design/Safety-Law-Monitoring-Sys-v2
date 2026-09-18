@@ -336,8 +336,7 @@
       settings: {
         law_api_oc: "",
         kosha_guide_api_key: "",
-        kosha_guide_api_url: "https://apis.data.go.kr/B552468/srch/smartSearch",
-        kosha_guide_sync_keywords: "안전보건,산업안전,중대재해,위험성평가,유해위험,보건관리,안전관리",
+        kosha_guide_api_url: "https://apis.data.go.kr/B552468/koshaguide/getKoshaGuide",
         new_admrul_keywords: "안전보건,산업안전,중대재해,위험성평가,유해위험,보건관리,안전관리",
         new_admrul_department: "고용노동부",
         new_admrul_since_date: "",
@@ -854,7 +853,6 @@
           kosha_guide_api_key_set: !!s.kosha_guide_api_key,
           kosha_guide_api_key: s.kosha_guide_api_key || null,
           kosha_guide_api_url: s.kosha_guide_api_url || null,
-          kosha_guide_sync_keywords: s.kosha_guide_sync_keywords || null,
           auto_sync_interval_hours: 24,
           new_admrul_keywords: s.new_admrul_keywords,
           new_admrul_department: s.new_admrul_department,
@@ -1019,8 +1017,7 @@
         if (!store.settings.kosha_guide_api_key) {
           return errorResponse(400, "설정에서 KOSHA 가이드 Open API 인증키를 먼저 저장하세요.");
         }
-        const keywords = (store.settings.kosha_guide_sync_keywords || "").split(",").map((k) => k.trim()).filter(Boolean);
-        return jsonResponse(200, { keywords_checked: keywords, found: 0, added: 0, updated: 0, errors: ["오프라인 데모 모드에서는 실제 공공데이터포털 API를 호출할 수 없습니다."] });
+        return jsonResponse(200, { found: 0, added: 0, updated: 0, errors: ["오프라인 데모 모드에서는 실제 공공데이터포털 API를 호출할 수 없습니다."] });
       },
     },
     // PDF 직접 첨부는 실제 파일을 서버 디스크에 저장하는 기능이라 오프라인

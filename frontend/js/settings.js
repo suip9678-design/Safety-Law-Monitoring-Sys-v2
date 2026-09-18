@@ -168,7 +168,6 @@ export async function loadSettings() {
 
     document.getElementById("koshaGuideApiKey").value = s.kosha_guide_api_key || "";
     document.getElementById("koshaGuideApiUrl").value = s.kosha_guide_api_url || "";
-    document.getElementById("koshaGuideSyncKeywords").value = s.kosha_guide_sync_keywords || "";
     document.getElementById("koshaGuideApiStatus").textContent = s.kosha_guide_api_key_set
       ? "인증키가 저장되어 있습니다. KOSHA 가이드 탭에서 \"API로 동기화\"를 눌러보세요."
       : "아직 인증키가 없습니다. 키를 저장하면 KOSHA 가이드 탭에서 자동 동기화를 쓸 수 있습니다.";
@@ -270,7 +269,6 @@ export function initSettingsForms() {
     const payload = {
       kosha_guide_api_key: document.getElementById("koshaGuideApiKey").value,
       kosha_guide_api_url: document.getElementById("koshaGuideApiUrl").value,
-      kosha_guide_sync_keywords: document.getElementById("koshaGuideSyncKeywords").value,
     };
     const btn = ev.target.querySelector('button[type="submit"]');
     btn.disabled = true;

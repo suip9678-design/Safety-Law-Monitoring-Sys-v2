@@ -384,7 +384,7 @@ export function initKoshaGuideSync() {
     statusEl.textContent = "";
     try {
       const result = await api("/api/kosha-guides/sync", { method: "POST" });
-      let msg = `동기화 완료: 키워드 ${result.keywords_checked.length}개 확인, 찾음 ${result.found}건 (추가 ${result.added}건, 갱신 ${result.updated}건)`;
+      let msg = `동기화 완료: 총 ${result.found}건 확인 (추가 ${result.added}건, 갱신 ${result.updated}건)`;
       if (result.errors.length) {
         msg += ` — 오류 ${result.errors.length}건: ${result.errors[0]}`;
       }

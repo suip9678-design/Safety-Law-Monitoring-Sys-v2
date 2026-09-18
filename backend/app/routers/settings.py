@@ -42,7 +42,6 @@ def get_settings(db: Session = Depends(get_db)):
         kosha_guide_api_key_set=bool(values.get("kosha_guide_api_key")),
         kosha_guide_api_key=values.get("kosha_guide_api_key") or None,
         kosha_guide_api_url=values.get("kosha_guide_api_url") or None,
-        kosha_guide_sync_keywords=values.get("kosha_guide_sync_keywords") or None,
         auto_sync_interval_hours=env_settings.AUTO_SYNC_INTERVAL_HOURS,
         new_admrul_keywords=values.get("new_admrul_keywords") or None,
         new_admrul_department=values.get("new_admrul_department") or None,
@@ -68,8 +67,6 @@ def update_settings(payload: schemas.SettingsUpdate, db: Session = Depends(get_d
         updates["kosha_guide_api_key"] = payload.kosha_guide_api_key
     if payload.kosha_guide_api_url is not None:
         updates["kosha_guide_api_url"] = payload.kosha_guide_api_url
-    if payload.kosha_guide_sync_keywords is not None:
-        updates["kosha_guide_sync_keywords"] = payload.kosha_guide_sync_keywords
     if payload.new_admrul_keywords is not None:
         updates["new_admrul_keywords"] = payload.new_admrul_keywords
     if payload.new_admrul_department is not None:
