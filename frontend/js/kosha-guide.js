@@ -288,6 +288,38 @@ const KOSHA_GUIDE_MATCHED_IN_LABEL = { code: "지침번호", title: "제목", co
 
 let koshaGuideSearchSeq = 0;
 
+// 검색 결과 전체(특히 본문 전체 content)를 기억해뒀다가, 표의 짧은
+// 미리보기를 눌렀을 때 다시 API를 부르지 않고 바로 팝업에 띄운다.
+let lastSearchResults = [];
+let lastSearchQuery = "";
+
+function hasKoshaGuidePreview(r) {
+  return Boolean(r.content) || Boolean(r.file_link);
+}
+
+function openKoshaGuidePreview(guideId) {
+  const r = lastSearchResults.find((x) => x.id === guideId);
+  if (!r) return;
+  document.getElementById("koshaGuidePreviewTitle").textContent = r.title;
+  const metaParts = [];
+  if (r.code) metaParts.push(`지침번호: ${r.code}`);
+  if (r.field) metaParts.push(`분야: ${r.field}`);
+  if (r.issued_date) metaParts.push(`제개정일자: ${fmtDate(r.issued_date)}`);
+  document.getElementById("koshaGuidePreviewMeta").textContent = metaParts.join(" · ") || "-";
+  const bodyEl = document.getElementById("koshaGuidePreviewBody");
+  bodyEl.innerHTML = r.content
+    ? highlightSnippet(r.content, lastSearchQuery)
+    : `<span class="hint">이 가이드는 아직 본문이 캐시되지 않았습니다. "본문 캐시 채우기"를 먼저 실행해두면 다음부터는 여기서 전체 내용을 바로 볼 수 있습니다 - 지금은 아래 "원문 열기"로 실제 문서를 직접 확인해주세요.</span>`;
+  const openLink = document.getElementById("koshaGuidePreviewOpenLink");
+  openLink.href = r.file_link || "#";
+  openLink.hidden = !r.file_link;
+  document.getElementById("koshaGuidePreviewModalOverlay").hidden = false;
+}
+
+function closeKoshaGuidePreview() {
+  document.getElementById("koshaGuidePreviewModalOverlay").hidden = true;
+}
+
 async function searchKoshaGuides() {
   const query = document.getElementById("koshaGuideSearchInput").value.trim();
   const el = document.getElementById("koshaGuideSearchResults");
@@ -297,6 +329,8 @@ async function searchKoshaGuides() {
   try {
     const results = await api(`/api/kosha-guides/search?query=${encodeURIComponent(query)}`);
     if (mySeq !== koshaGuideSearchSeq) return;
+    lastSearchResults = results;
+    lastSearchQuery = query;
     if (!results.length) {
       el.innerHTML = `<div class="empty">검색 결과가 없습니다. 아직 등록된 KOSHA 가이드가 없거나, 등록해둔 범위에 일치하는 내용이 없습니다.</div>`;
       return;
@@ -311,13 +345,18 @@ async function searchKoshaGuides() {
               <td>${escapeHtml(r.field || "-")}</td>
               <td>${titleCell(r)}</td>
               <td>${KOSHA_GUIDE_MATCHED_IN_LABEL[r.matched_in] || "-"}</td>
-              <td class="search-snippet">${r.snippet ? highlightSnippet(r.snippet, query) : '<span class="hint">-</span>'}</td>
+              <td class="search-snippet">${hasKoshaGuidePreview(r)
+                ? `<button type="button" class="link-btn" data-preview-guide="${r.id}">${r.snippet ? highlightSnippet(r.snippet, query) : "미리보기"}</button>`
+                : '<span class="hint">-</span>'}</td>
               <td>${fmtDate(r.issued_date)}</td>
             </tr>
           `).join("")}
         </tbody>
       </table>
     `;
+    el.querySelectorAll("[data-preview-guide]").forEach((btn) => {
+      btn.addEventListener("click", () => openKoshaGuidePreview(Number(btn.dataset.previewGuide)));
+    });
   } catch (e) {
     if (mySeq !== koshaGuideSearchSeq) return;
     el.innerHTML = `<div class="empty">검색 실패: ${escapeHtml(e.message)}</div>`;
@@ -328,6 +367,14 @@ export function initKoshaGuideSearch() {
   document.getElementById("koshaGuideSearchBtn").addEventListener("click", searchKoshaGuides);
   document.getElementById("koshaGuideSearchInput").addEventListener("keydown", (e) => {
     if (e.key === "Enter") { e.preventDefault(); searchKoshaGuides(); }
+  });
+  document.getElementById("koshaGuidePreviewCloseBtn").addEventListener("click", closeKoshaGuidePreview);
+  document.getElementById("koshaGuidePreviewCloseBtn2").addEventListener("click", closeKoshaGuidePreview);
+  document.getElementById("koshaGuidePreviewModalOverlay").addEventListener("click", (ev) => {
+    if (ev.target.id === "koshaGuidePreviewModalOverlay") closeKoshaGuidePreview();
+  });
+  document.addEventListener("keydown", (ev) => {
+    if (ev.key === "Escape" && !document.getElementById("koshaGuidePreviewModalOverlay").hidden) closeKoshaGuidePreview();
   });
 }
 

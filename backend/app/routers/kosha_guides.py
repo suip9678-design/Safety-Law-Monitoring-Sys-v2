@@ -114,6 +114,7 @@ def search_guides(query: str = Query(..., min_length=1), db: Session = Depends(g
                 file_link=row.file_link,
                 matched_in=matched_in,
                 snippet=snippet,
+                content=content,
             )
         )
     return results

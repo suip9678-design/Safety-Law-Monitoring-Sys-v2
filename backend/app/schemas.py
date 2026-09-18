@@ -198,8 +198,12 @@ class KoshaGuideSearchResult(BaseModel):
     # 검색어가 지침번호/제목/본문 중 어디서 매칭됐는지. 본문이 있으면(더
     # 구체적인 정보라) 제목/지침번호보다 우선한다.
     matched_in: str = "title"
-    # matched_in이 "content"일 때 검색어 주변 발췌문.
+    # matched_in이 "content"일 때 검색어 주변 발췌문(표에 바로 보이는 짧은 미리보기).
     snippet: str = ""
+    # 표의 짧은 미리보기만으로는 이 가이드가 정말 필요한 문서인지 판단하기
+    # 어려울 수 있어, 클릭하면 팝업으로 훨씬 긴 본문 전체(캐시해둔 만큼)를
+    # 보여주기 위한 값. 캐시된 본문이 없으면 빈 문자열.
+    content: str = ""
 
 
 class KoshaGuideBulkImportItems(BaseModel):

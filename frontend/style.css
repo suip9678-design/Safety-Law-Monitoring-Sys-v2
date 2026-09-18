@@ -510,6 +510,25 @@ tbody tr:last-child td { border-bottom: none; }
 
 .modal-box.modal-wide { max-width: 860px; }
 
+/* ---------- KOSHA 가이드 본문 미리보기 팝업 ---------- */
+
+.preview-body {
+  max-height: 60vh;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  line-height: 1.6;
+  padding: 14px 16px;
+  background: var(--surface-muted);
+  border-radius: var(--radius-md);
+  font-size: 14px;
+}
+
+.preview-body mark {
+  background: #fff3a3;
+  color: inherit;
+  border-radius: 2px;
+}
+
 /* ---------- help modal ---------- */
 
 .help-toc {
