@@ -51,3 +51,16 @@ def ensure_columns():
         if "is_archived" not in news_columns:
             with engine.begin() as conn:
                 conn.execute(text("ALTER TABLE news_items ADD COLUMN is_archived BOOLEAN DEFAULT 0"))
+
+    if "kosha_guides" in inspector.get_table_names():
+        guide_columns = {c["name"] for c in inspector.get_columns("kosha_guides")}
+        if "content_stale" not in guide_columns:
+            with engine.begin() as conn:
+                conn.execute(text("ALTER TABLE kosha_guides ADD COLUMN content_stale BOOLEAN DEFAULT 1"))
+                # 이미 본문이 채워져 있던 기존 항목은 새로 캐시할 필요가
+                # 없다고 간주해 stale=0으로 시작한다 - 그래야 이 업데이트
+                # 직후 "본문 캐시 채우기"가 이미 캐시해둔 걸 전부 다시
+                # 훑지 않는다.
+                conn.execute(
+                    text("UPDATE kosha_guides SET content_stale = 0 WHERE content IS NOT NULL AND content != ''")
+                )

@@ -336,17 +336,31 @@ export function initKoshaGuideContentCache() {
     const btn = document.getElementById("koshaGuideCacheContentBtn");
     const statusEl = document.getElementById("koshaGuideCacheContentStatus");
     btn.disabled = true;
-    btn.textContent = "처리 중...";
+    let totalProcessed = 0, totalSucceeded = 0, totalFailed = 0;
+    // 서버가 한 번 호출에 최대 20건씩만 처리하므로(외부 PDF를 매번
+    // 새로 내려받아야 해서), remaining이 0이 되거나 진행이 멈출 때까지
+    // (매번 처리 건수가 있는데도 remaining이 줄지 않으면 - 남은 항목이
+    // 전부 링크 접근 실패 등으로 계속 실패한다는 뜻 - 무한 호출을 막기
+    // 위해) 자동으로 반복 호출한다.
+    let lastRemaining = Infinity;
     try {
-      const result = await api("/api/kosha-guides/cache-content", { method: "POST" });
-      let msg = `이번에 ${result.processed}건 처리 (성공 ${result.succeeded}건, 실패 ${result.failed}건)`;
-      msg += result.remaining > 0
-        ? ` — 아직 ${result.remaining}건 남았습니다. "본문 캐시 채우기"를 다시 눌러주세요.`
-        : " — 모두 처리했습니다.";
-      statusEl.textContent = msg;
-      toast(result.processed === 0 && result.remaining === 0 ? "본문을 채울 대상이 없습니다." : "본문 캐시를 처리했습니다.");
+      while (true) {
+        btn.textContent = `처리 중... (누적 ${totalProcessed}건)`;
+        const result = await api("/api/kosha-guides/cache-content", { method: "POST" });
+        totalProcessed += result.processed;
+        totalSucceeded += result.succeeded;
+        totalFailed += result.failed;
+        statusEl.textContent = `누적 ${totalProcessed}건 처리 (성공 ${totalSucceeded}건, 실패 ${totalFailed}건) — 남은 ${result.remaining}건`;
+        if (result.remaining === 0) break;
+        if (result.remaining >= lastRemaining) {
+          statusEl.textContent += ` — 더 이상 진행되지 않아 중단했습니다 (남은 항목은 링크 접근 실패 등으로 계속 캐시하지 못하고 있습니다).`;
+          break;
+        }
+        lastRemaining = result.remaining;
+      }
+      toast(totalProcessed === 0 ? "본문을 채울 대상이 없습니다." : "본문 캐시를 처리했습니다.");
     } catch (e) {
-      statusEl.textContent = `처리 실패: ${e.message}`;
+      statusEl.textContent = `처리 실패: ${e.message} (지금까지 누적 ${totalProcessed}건 처리)`;
       toast(`본문 캐시 처리 실패: ${e.message}`, true);
     } finally {
       btn.disabled = false;

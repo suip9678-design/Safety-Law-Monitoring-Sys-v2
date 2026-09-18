@@ -214,6 +214,12 @@ class KoshaGuide(Base):
     # 키워드 검색 대상에 포함된다. PDF 원문에서 직접 복사해 붙여넣는 것을
     # 가정하며, 없어도(빈 값이어도) 제목/지침번호 검색은 그대로 동작한다.
     content: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # 원문 링크가 새로 생겼거나 바뀌었는데(API 재동기화로 감지된 개정,
+    # 또는 "수정"에서 링크를 직접 바꾼 경우) 아직 그 새 PDF에서 본문을
+    # 다시 뽑아오지 못한 상태인지 - "본문 캐시 채우기"가 매번 전체를
+    # 다시 훑지 않고 True인 항목만 처리하게 하기 위한 표시. 새로 만들어질
+    # 때는 아직 캐시된 적이 없으니 기본값 True.
+    content_stale: Mapped[bool] = mapped_column(Boolean, default=True)
     note: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     created_at: Mapped[datetime.datetime] = mapped_column(DateTime, default=now)

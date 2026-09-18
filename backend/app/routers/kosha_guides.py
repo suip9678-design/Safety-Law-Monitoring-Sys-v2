@@ -133,6 +133,7 @@ def create_guide(payload: schemas.KoshaGuideCreate, db: Session = Depends(get_db
         issued_date=_clean(payload.issued_date),
         file_link=_clean(payload.file_link),
         content=payload.content or None,
+        content_stale=not bool(payload.content),
         note=payload.note or None,
     )
     db.add(guide)
@@ -151,13 +152,23 @@ def update_guide(guide_id: int, payload: schemas.KoshaGuideCreate, db: Session =
         raise HTTPException(status_code=400, detail="제목은 비워둘 수 없습니다.")
     code = _clean(payload.code)
     _check_code_conflict(db, code, exclude_id=guide_id)
+    new_file_link = _clean(payload.file_link)
+    link_changed = new_file_link != guide.file_link
     guide.code = code
     guide.field = _clean(payload.field)
     guide.title = title
     guide.issued_date = _clean(payload.issued_date)
-    guide.file_link = _clean(payload.file_link)
-    guide.content = payload.content or None
+    guide.file_link = new_file_link
     guide.note = payload.note or None
+    if payload.content:
+        guide.content = payload.content
+        guide.content_stale = False
+    elif link_changed:
+        # 원문 링크를 새로 바꿨는데 본문은 같이 안 채워줬다 - 예전 링크
+        # 기준의 본문을 그대로 남겨두면 새 링크와 안 맞을 수 있으니 비우고
+        # "본문 캐시 채우기" 대상으로 다시 표시한다.
+        guide.content = None
+        guide.content_stale = bool(new_file_link)
     db.commit()
     db.refresh(guide)
     return guide
@@ -192,9 +203,13 @@ def upload_guide_file(guide_id: int, file: UploadFile, db: Session = Depends(get
     # 업로드한 김에 본문도 바로 추출해둔다 - 이미 브라우저에서 받은
     # 바이트가 메모리에 있으니 추가 다운로드 없이 바로 처리할 수 있다.
     # 스캔 이미지 PDF 등 텍스트 추출이 안 되는 경우는 조용히 건너뛴다.
+    # 이 파일로는 이게 최종 시도이므로(로컬 파일이라 나중에 다시 해봐도
+    # 결과가 똑같다), 성공/실패 어느 쪽이든 "본문 캐시 채우기" 대상에서는
+    # 빼둔다 - 실패한 경우는 다른 PDF로 다시 첨부해야 해결된다.
     extracted = kosha_guide_pdf.extract_pdf_text(data)
     if extracted:
         guide.content = extracted
+    guide.content_stale = False
     db.commit()
     db.refresh(guide)
     return guide
@@ -245,7 +260,12 @@ def _upsert(db: Session, code: str | None, field: str | None, title: str, issued
     설명 참고), code로만 매칭하면 "이미 등록된 것과 같은지"를 절대 알 수
     없어 동기화를 누를 때마다 같은 가이드가 계속 새로 쌓이는 문제가 있었다.
     사용자가 수동으로 첨부해둔 file_link(PDF 첨부)는 API 재동기화로 다시
-    비워지지 않도록, 새 값이 없을 때는 기존 값을 그대로 유지한다."""
+    비워지지 않도록, 새 값이 없을 때는 기존 값을 그대로 유지한다.
+
+    원문 링크가 실제로 바뀐 경우(=개정으로 새 PDF가 올라온 경우)만
+    content_stale을 세워 "본문 캐시 채우기"의 재처리 대상으로 표시한다 -
+    링크가 그대로인 항목은 이미 캐시해둔 본문이 여전히 맞으므로 매번
+    다시 내려받지 않고 건너뛴다."""
     q = db.query(models.KoshaGuide).filter(models.KoshaGuide.code == code) if code \
         else db.query(models.KoshaGuide).filter(models.KoshaGuide.code.is_(None), models.KoshaGuide.title == title)
     existing = q.first()
@@ -253,15 +273,19 @@ def _upsert(db: Session, code: str | None, field: str | None, title: str, issued
         existing.field = field
         existing.title = title
         existing.issued_date = issued_date
+        link_changed = bool(file_link) and file_link != existing.file_link
         if file_link:
             existing.file_link = file_link
         if content:
             existing.content = content
+            existing.content_stale = False
+        elif link_changed:
+            existing.content_stale = True
         return "updated"
     db.add(
         models.KoshaGuide(
             code=code, field=field, title=title, issued_date=issued_date, file_link=file_link,
-            content=content,
+            content=content, content_stale=not bool(content),
         )
     )
     return "added"
@@ -332,22 +356,28 @@ def sync_from_api(db: Session = Depends(get_db)):
 
 
 def _content_pending_query(db: Session):
+    # content_stale은 "원문 링크는 있는데 아직 그 링크 기준으로 캐시를
+    # 못(안) 한 상태"를 뜻한다 - 새로 만들어진 항목은 기본 True, 링크가
+    # 안 바뀐 채 재동기화된 항목은 False로 남아 매번 다시 처리되지 않고
+    # 건너뛴다(_upsert 설명 참고).
     return (
         db.query(models.KoshaGuide)
         .filter(models.KoshaGuide.file_link.isnot(None))
-        .filter((models.KoshaGuide.content.is_(None)) | (models.KoshaGuide.content == ""))
+        .filter(models.KoshaGuide.content_stale.is_(True))
     )
 
 
 @router.post("/cache-content", response_model=schemas.KoshaGuideContentCacheResult)
 def cache_content(limit: int = 20, db: Session = Depends(get_db)):
-    """원문 링크(file_link)는 있지만 아직 본문(content)이 캐시되지 않은
-    가이드를 최대 limit건 골라 PDF에서 텍스트를 뽑아 저장한다 - "본문
-    검색"이 실제 내용까지 찾아 미리보기를 보여주려면 이 캐시가 있어야
-    한다. 외부 PDF를 매번 새로 내려받아야 해서 한 번에 너무 많이
-    처리하면 오래 걸리므로, 한 번 호출에 처리할 건수를 제한해두고 남은
-    건수를 함께 돌려준다 - 화면에서 "계속" 누르듯 여러 번 호출해서
-    끝까지 채울 수 있다."""
+    """원문 링크(file_link)는 있지만 아직 캐시되지 않았거나(신규) 링크가
+    바뀌어 다시 캐시해야 하는(개정) 가이드를 최대 limit건 골라 PDF에서
+    텍스트를 뽑아 저장한다 - "본문 검색"이 실제 내용까지 찾아 미리보기를
+    보여주려면 이 캐시가 있어야 한다. 이미 캐시해뒀고 그 뒤로 링크가
+    바뀌지 않은 항목은 건너뛴다. 외부 PDF를 매번 새로 내려받아야 해서
+    한 번에 너무 많이 처리하면 오래 걸리므로, 한 번 호출에 처리할 건수를
+    제한해두고 남은 건수를 함께 돌려준다 - 프론트엔드가 remaining이
+    0이 될 때까지(또는 진행이 멈출 때까지) 이 엔드포인트를 반복 호출해
+    끝까지 채운다."""
     candidates = _content_pending_query(db).limit(max(1, min(limit, 100))).all()
     processed = succeeded = failed = 0
     for guide in candidates:
@@ -355,8 +385,12 @@ def cache_content(limit: int = 20, db: Session = Depends(get_db)):
         text = _extract_content_for_guide(guide)
         if text:
             guide.content = text
+            guide.content_stale = False
             succeeded += 1
         else:
+            # 실패 원인(끊긴 링크, 일시적 네트워크 오류, 텍스트가 없는
+            # 스캔본 등)을 구분할 수 없으니 stale로 남겨 다음 호출에서
+            # 다시 시도해볼 수 있게 한다.
             failed += 1
     db.commit()
     remaining = _content_pending_query(db).count()
