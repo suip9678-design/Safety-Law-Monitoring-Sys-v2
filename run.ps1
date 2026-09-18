@@ -43,8 +43,22 @@ function Ensure-BackendReady {
 
     . $venvActivate
 
-    if (-not (Get-Command uvicorn -ErrorAction SilentlyContinue)) {
-        Write-Host "필요한 패키지를 설치합니다 (최초 1회, 몇 분 걸릴 수 있습니다)..." -ForegroundColor Cyan
+    # "uvicorn이 있는지"만으로는 부족하다 - git pull로 requirements.txt에
+    # 새 패키지가 추가된 경우(예: python-multipart), venv 자체는 이미
+    # 있고 uvicorn도 이미 설치돼 있어 이 조건만으로는 감지가 안 되고,
+    # 새로 추가된 패키지가 없는 채로 서버가 그대로 떠버려 나중에
+    # "OOO가 설치되어 있지 않습니다" 오류로 죽는다. 그래서 requirements.txt
+    # 내용의 해시를 venv 안에 남겨두고, git pull로 그 내용이 바뀌었으면
+    # (즉 저장해둔 해시와 다르면) 매번 다시 설치하도록 한다 - 이미 설치된
+    # 패키지는 pip가 알아서 건너뛰므로 매번 다시 해도 거의 즉시 끝난다.
+    $requirementsPath = Join-Path $backendPath "requirements.txt"
+    $hashMarkerPath = Join-Path $venvPath "requirements.sha256"
+    $currentHash = (Get-FileHash $requirementsPath -Algorithm SHA256).Hash
+    $installedHash = if (Test-Path $hashMarkerPath) { (Get-Content $hashMarkerPath -Raw).Trim() } else { $null }
+    $needsInstall = (-not (Get-Command uvicorn -ErrorAction SilentlyContinue)) -or ($installedHash -ne $currentHash)
+
+    if ($needsInstall) {
+        Write-Host "필요한 패키지를 설치/갱신합니다 (requirements.txt 변경 감지 시 매번 실행되며, 몇 분 걸릴 수 있습니다)..." -ForegroundColor Cyan
         Push-Location $backendPath
         pip install -q -r requirements.txt
         if ($LASTEXITCODE -ne 0) {
@@ -60,6 +74,7 @@ function Ensure-BackendReady {
             Write-Host "`n패키지 설치에 실패했습니다. 인터넷 연결 또는 사내망 보안 설정을 확인해주세요." -ForegroundColor Red
             return $false
         }
+        Set-Content -Path $hashMarkerPath -Value $currentHash -NoNewline
     }
 
     $envFile = Join-Path $backendPath ".env"
