@@ -331,6 +331,30 @@ export function initKoshaGuideSearch() {
   });
 }
 
+export function initKoshaGuideContentCache() {
+  document.getElementById("koshaGuideCacheContentBtn").addEventListener("click", async () => {
+    const btn = document.getElementById("koshaGuideCacheContentBtn");
+    const statusEl = document.getElementById("koshaGuideCacheContentStatus");
+    btn.disabled = true;
+    btn.textContent = "처리 중...";
+    try {
+      const result = await api("/api/kosha-guides/cache-content", { method: "POST" });
+      let msg = `이번에 ${result.processed}건 처리 (성공 ${result.succeeded}건, 실패 ${result.failed}건)`;
+      msg += result.remaining > 0
+        ? ` — 아직 ${result.remaining}건 남았습니다. "본문 캐시 채우기"를 다시 눌러주세요.`
+        : " — 모두 처리했습니다.";
+      statusEl.textContent = msg;
+      toast(result.processed === 0 && result.remaining === 0 ? "본문을 채울 대상이 없습니다." : "본문 캐시를 처리했습니다.");
+    } catch (e) {
+      statusEl.textContent = `처리 실패: ${e.message}`;
+      toast(`본문 캐시 처리 실패: ${e.message}`, true);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "본문 캐시 채우기";
+    }
+  });
+}
+
 // 일괄 등록 붙여넣기 한 줄 파싱: 탭이 있으면 탭으로, 없으면 쉼표로
 // 나눈다(제목에 쉼표가 섞여도 최대한 안전하도록, 따옴표로 감싼 구간의
 // 쉼표는 나누지 않는 간단한 CSV 파서를 쓴다). "지침번호, 분야, 제목,

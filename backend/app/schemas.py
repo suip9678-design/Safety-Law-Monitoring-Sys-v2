@@ -223,6 +223,13 @@ class KoshaGuideBulkDelete(BaseModel):
     ids: list[int]
 
 
+class KoshaGuideContentCacheResult(BaseModel):
+    processed: int = 0
+    succeeded: int = 0
+    failed: int = 0
+    remaining: int = 0
+
+
 class SettingsOut(BaseModel):
     demo_mode: bool
     law_api_oc_set: bool

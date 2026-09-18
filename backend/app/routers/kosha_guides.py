@@ -1,16 +1,20 @@
 """KOSHA GUIDE(안전보건공단 기술지침) 라이브러리 - 등록/검색.
 
-법령 키워드 검색(content_cache_service)과 달리 이 데이터셋은 자동으로
-받아올 공개 API가 없어(models.KoshaGuide의 설명 참고), 사용자가 직접
-입력하거나 붙여넣기(일괄 등록)한 것만 검색 대상이 된다."""
+공공데이터포털 API 동기화(kosha_guide_api.py)나 사용자가 직접 입력/
+붙여넣기(일괄 등록)로 지침번호·제목·원문 링크를 채운다. 다만 그 어느
+경로로도 본문 텍스트 자체는 오지 않으므로(API는 메타데이터만, 실제 내용은
+file_link가 가리키는 PDF 안에 있음), "본문 검색"이 진짜 내용까지 찾아
+미리보기를 보여주게 하려면 PDF에서 텍스트를 뽑아 content에 저장해두는
+과정이 따로 필요하다 - 그 추출은 kosha_guide_pdf.py가 맡는다."""
 
+import re
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
-from .. import models, schemas, settings_store
+from .. import kosha_guide_pdf, models, schemas, settings_store
 from ..config import settings
 from ..database import get_db
 from ..kosha_guide_api import KoshaGuideApiError, build_client
@@ -27,6 +31,26 @@ def _uploaded_file_path(guide_id: int) -> Path:
 
 def _served_file_url(guide_id: int) -> str:
     return f"{_FILE_SERVE_URL_PREFIX}{guide_id}{_FILE_SERVE_URL_SUFFIX}"
+
+
+_SERVED_FILE_URL_RE = re.compile(r"^/api/kosha-guides/(\d+)/file$")
+
+
+def _extract_content_for_guide(guide: "models.KoshaGuide") -> str | None:
+    """가이드의 file_link가 가리키는 PDF에서 본문 텍스트를 뽑아온다. 이
+    서버가 직접 서빙 중인(수동 첨부한) 파일이면 네트워크 왕복 없이
+    디스크에서 바로 읽고, 외부 URL(API 동기화로 받아온 kosha.or.kr
+    다운로드 링크 등)이면 내려받아서 처리한다."""
+    link = guide.file_link or ""
+    served_match = _SERVED_FILE_URL_RE.match(link)
+    if served_match:
+        path = _uploaded_file_path(int(served_match.group(1)))
+        if not path.exists():
+            return None
+        return kosha_guide_pdf.extract_pdf_text(path.read_bytes())
+    if link.startswith("http://") or link.startswith("https://"):
+        return kosha_guide_pdf.download_and_extract(link)
+    return None
 
 
 def _clean(value: str | None) -> str | None:
@@ -162,11 +186,15 @@ def upload_guide_file(guide_id: int, file: UploadFile, db: Session = Depends(get
     filename = (file.filename or "").lower()
     if file.content_type not in ("application/pdf", "application/x-pdf") and not filename.endswith(".pdf"):
         raise HTTPException(status_code=400, detail="PDF 파일만 첨부할 수 있습니다.")
-    dest = _uploaded_file_path(guide_id)
-    with dest.open("wb") as out:
-        while chunk := file.file.read(1024 * 1024):
-            out.write(chunk)
+    data = file.file.read()
+    _uploaded_file_path(guide_id).write_bytes(data)
     guide.file_link = _served_file_url(guide_id)
+    # 업로드한 김에 본문도 바로 추출해둔다 - 이미 브라우저에서 받은
+    # 바이트가 메모리에 있으니 추가 다운로드 없이 바로 처리할 수 있다.
+    # 스캔 이미지 PDF 등 텍스트 추출이 안 되는 경우는 조용히 건너뛴다.
+    extracted = kosha_guide_pdf.extract_pdf_text(data)
+    if extracted:
+        guide.content = extracted
     db.commit()
     db.refresh(guide)
     return guide
@@ -301,3 +329,37 @@ def sync_from_api(db: Session = Depends(get_db)):
             added += 1
     db.commit()
     return schemas.KoshaGuideSyncResult(found=found, added=added, updated=updated, errors=errors)
+
+
+def _content_pending_query(db: Session):
+    return (
+        db.query(models.KoshaGuide)
+        .filter(models.KoshaGuide.file_link.isnot(None))
+        .filter((models.KoshaGuide.content.is_(None)) | (models.KoshaGuide.content == ""))
+    )
+
+
+@router.post("/cache-content", response_model=schemas.KoshaGuideContentCacheResult)
+def cache_content(limit: int = 20, db: Session = Depends(get_db)):
+    """원문 링크(file_link)는 있지만 아직 본문(content)이 캐시되지 않은
+    가이드를 최대 limit건 골라 PDF에서 텍스트를 뽑아 저장한다 - "본문
+    검색"이 실제 내용까지 찾아 미리보기를 보여주려면 이 캐시가 있어야
+    한다. 외부 PDF를 매번 새로 내려받아야 해서 한 번에 너무 많이
+    처리하면 오래 걸리므로, 한 번 호출에 처리할 건수를 제한해두고 남은
+    건수를 함께 돌려준다 - 화면에서 "계속" 누르듯 여러 번 호출해서
+    끝까지 채울 수 있다."""
+    candidates = _content_pending_query(db).limit(max(1, min(limit, 100))).all()
+    processed = succeeded = failed = 0
+    for guide in candidates:
+        processed += 1
+        text = _extract_content_for_guide(guide)
+        if text:
+            guide.content = text
+            succeeded += 1
+        else:
+            failed += 1
+    db.commit()
+    remaining = _content_pending_query(db).count()
+    return schemas.KoshaGuideContentCacheResult(
+        processed=processed, succeeded=succeeded, failed=failed, remaining=remaining,
+    )

@@ -1033,6 +1033,13 @@
       re: /^\/api\/kosha-guides\/\d+\/file$/,
       handler: () => errorResponse(400, "오프라인 데모 모드에서는 PDF 첨부를 사용할 수 없습니다."),
     },
+    // 본문 캐시도 마찬가지로 외부 PDF를 실제로 내려받아야 하는 기능이라
+    // 오프라인 데모에서는 처리할 대상이 없는 것으로 응답한다.
+    {
+      method: "POST",
+      re: /^\/api\/kosha-guides\/cache-content$/,
+      handler: () => jsonResponse(200, { processed: 0, succeeded: 0, failed: 0, remaining: 0 }),
+    },
   ];
 
   async function mockFetch(urlStr, init) {

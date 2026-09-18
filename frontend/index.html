@@ -199,8 +199,18 @@
       </div>
 
       <div class="panel-box">
-        <h2>본문 검색</h2>
-        <p class="hint">지침번호·제목뿐 아니라, 등록할 때 본문을 함께 입력해둔 가이드라면 그 내용까지 대상으로 검색합니다.</p>
+        <div class="row" style="justify-content: space-between; margin-bottom: 0;">
+          <h2 style="margin: 0;">본문 검색</h2>
+          <button id="koshaGuideCacheContentBtn" class="btn">본문 캐시 채우기</button>
+        </div>
+        <p class="hint">
+          지침번호·제목뿐 아니라, 본문(PDF 원문 텍스트)까지 대상으로 검색해 미리보기를 보여줍니다. 다만 동기화나
+          일괄 등록은 원문 링크만 주고 본문 텍스트 자체는 주지 않으므로, 검색에서 실제 내용까지 찾으려면 먼저
+          <b>"본문 캐시 채우기"</b>를 눌러 원문 링크가 있는 가이드들의 PDF에서 텍스트를 미리 뽑아둬야 합니다
+          (PDF를 직접 첨부한 가이드는 첨부하는 순간 자동으로 채워집니다). 외부 PDF를 매번 새로 내려받는 작업이라
+          한 번에 최대 20건씩 처리하니, 가이드가 많으면 남은 건수가 0이 될 때까지 여러 번 눌러주세요.
+        </p>
+        <p id="koshaGuideCacheContentStatus" class="hint"></p>
         <div class="row">
           <input id="koshaGuideSearchInput" type="text" placeholder="키워드로 검색 (예: 밀폐공간)" style="flex: 1;" />
           <button id="koshaGuideSearchBtn" class="btn btn-primary">검색</button>
