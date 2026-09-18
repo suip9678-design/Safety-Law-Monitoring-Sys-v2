@@ -977,6 +977,18 @@
     },
     {
       method: "POST",
+      re: /^\/api\/kosha-guides\/bulk-delete$/,
+      handler: (m, sp, body) => {
+        if (!body.ids || !body.ids.length) return errorResponse(400, "선택된 항목이 없습니다.");
+        const idSet = new Set(body.ids);
+        for (let i = store.koshaGuides.length - 1; i >= 0; i--) {
+          if (idSet.has(store.koshaGuides[i].id)) store.koshaGuides.splice(i, 1);
+        }
+        return jsonResponse(204);
+      },
+    },
+    {
+      method: "POST",
       re: /^\/api\/kosha-guides\/bulk-import$/,
       handler: (m, sp, body) => {
         let added = 0, updated = 0, skipped = 0;

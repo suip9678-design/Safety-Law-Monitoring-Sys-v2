@@ -196,6 +196,17 @@ def delete_guide_file(guide_id: int, db: Session = Depends(get_db)):
     return guide
 
 
+@router.post("/bulk-delete", status_code=204)
+def bulk_delete_guides(payload: schemas.KoshaGuideBulkDelete, db: Session = Depends(get_db)):
+    if not payload.ids:
+        raise HTTPException(status_code=400, detail="선택된 항목이 없습니다.")
+    db.query(models.KoshaGuide).filter(models.KoshaGuide.id.in_(payload.ids)).delete(synchronize_session=False)
+    db.commit()
+    for guide_id in payload.ids:
+        _uploaded_file_path(guide_id).unlink(missing_ok=True)
+    return None
+
+
 def _upsert(db: Session, code: str | None, field: str | None, title: str, issued_date: str | None,
             file_link: str | None, content: str | None = None) -> str:
     """지침번호(code)가 있고 이미 등록된 것과 같으면 덮어쓰고("updated"),

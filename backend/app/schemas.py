@@ -220,6 +220,10 @@ class KoshaGuideSyncResult(BaseModel):
     errors: list[str] = []
 
 
+class KoshaGuideBulkDelete(BaseModel):
+    ids: list[int]
+
+
 class SettingsOut(BaseModel):
     demo_mode: bool
     law_api_oc_set: bool

@@ -18,6 +18,9 @@ function titleCell(g) {
 }
 
 let koshaGuideFilterText = "";
+// "등록된 KOSHA 가이드" 목록에서 체크박스로 선택한 id들 - 목록을 다시
+// 불러올 때마다 초기화된다(개정 이력 탭의 선택 삭제와 같은 패턴).
+let selectedKoshaGuideIds = new Set();
 
 function openKoshaGuideModal() {
   document.getElementById("koshaGuideModalOverlay").hidden = false;
@@ -57,9 +60,22 @@ function resetKoshaGuideForm() {
 export async function loadKoshaGuides() {
   try {
     state.koshaGuides = await api("/api/kosha-guides");
+    selectedKoshaGuideIds = new Set();
     renderKoshaGuidesTable();
   } catch (e) {
     toast(`KOSHA 가이드 목록 로드 실패: ${e.message}`, true);
+  }
+}
+
+function updateKoshaGuidesBulkToolbar() {
+  document.getElementById("koshaGuidesSelectedCount").textContent = `${selectedKoshaGuideIds.size}건 선택됨`;
+  document.getElementById("koshaGuidesBulkDeleteBtn").disabled = selectedKoshaGuideIds.size === 0;
+  const selectAll = document.getElementById("koshaGuidesSelectAllCheckbox");
+  if (selectAll) {
+    const rowCheckboxes = document.querySelectorAll(".kosha-guide-row-checkbox");
+    const checkedCount = document.querySelectorAll(".kosha-guide-row-checkbox:checked").length;
+    selectAll.checked = rowCheckboxes.length > 0 && checkedCount === rowCheckboxes.length;
+    selectAll.indeterminate = checkedCount > 0 && checkedCount < rowCheckboxes.length;
   }
 }
 
@@ -67,6 +83,7 @@ function renderKoshaGuidesTable() {
   const el = document.getElementById("koshaGuidesTable");
   if (!state.koshaGuides.length) {
     el.innerHTML = `<div class="empty">등록된 KOSHA 가이드가 없습니다. 위 "가이드 추가" 또는 "여러 건 한 번에 붙여넣기"로 채워보세요.</div>`;
+    updateKoshaGuidesBulkToolbar();
     return;
   }
   const q = koshaGuideFilterText.trim();
@@ -77,14 +94,16 @@ function renderKoshaGuidesTable() {
     : state.koshaGuides;
   if (!filtered.length) {
     el.innerHTML = `<div class="empty">"${escapeHtml(q)}"와(과) 일치하는 가이드가 없습니다.</div>`;
+    updateKoshaGuidesBulkToolbar();
     return;
   }
   el.innerHTML = `
     <table>
-      <thead><tr><th>지침번호</th><th>분야</th><th>제목</th><th>제개정일자</th><th></th></tr></thead>
+      <thead><tr><th><input type="checkbox" id="koshaGuidesSelectAllCheckbox" title="전체 선택"></th><th>지침번호</th><th>분야</th><th>제목</th><th>제개정일자</th><th></th></tr></thead>
       <tbody>
         ${filtered.map((g) => `
           <tr>
+            <td><input type="checkbox" class="kosha-guide-row-checkbox" data-guide-id="${g.id}" ${selectedKoshaGuideIds.has(g.id) ? "checked" : ""}></td>
             <td>${escapeHtml(g.code || "-")}</td>
             <td>${escapeHtml(g.field || "-")}</td>
             <td>${titleCell(g)}</td>
@@ -113,6 +132,48 @@ function renderKoshaGuidesTable() {
       }
     });
   });
+  el.querySelectorAll(".kosha-guide-row-checkbox").forEach((cb) => {
+    cb.addEventListener("change", () => {
+      const id = Number(cb.dataset.guideId);
+      if (cb.checked) selectedKoshaGuideIds.add(id);
+      else selectedKoshaGuideIds.delete(id);
+      updateKoshaGuidesBulkToolbar();
+    });
+  });
+  const selectAll = document.getElementById("koshaGuidesSelectAllCheckbox");
+  selectAll.addEventListener("change", () => {
+    el.querySelectorAll(".kosha-guide-row-checkbox").forEach((cb) => {
+      cb.checked = selectAll.checked;
+      const id = Number(cb.dataset.guideId);
+      if (selectAll.checked) selectedKoshaGuideIds.add(id);
+      else selectedKoshaGuideIds.delete(id);
+    });
+    updateKoshaGuidesBulkToolbar();
+  });
+  updateKoshaGuidesBulkToolbar();
+}
+
+async function deleteSelectedKoshaGuides() {
+  if (selectedKoshaGuideIds.size === 0) return;
+  const count = selectedKoshaGuideIds.size;
+  if (!confirm(`선택한 KOSHA 가이드 ${count}건을 삭제할까요? 되돌릴 수 없습니다.`)) return;
+  const btn = document.getElementById("koshaGuidesBulkDeleteBtn");
+  btn.disabled = true;
+  try {
+    await api("/api/kosha-guides/bulk-delete", {
+      method: "POST",
+      body: JSON.stringify({ ids: Array.from(selectedKoshaGuideIds) }),
+    });
+    toast(`${count}건을 삭제했습니다.`);
+    loadKoshaGuides();
+  } catch (e) {
+    toast(`삭제 실패: ${e.message}`, true);
+    btn.disabled = false;
+  }
+}
+
+export function initKoshaGuideBulkDelete() {
+  document.getElementById("koshaGuidesBulkDeleteBtn").addEventListener("click", deleteSelectedKoshaGuides);
 }
 
 function startEditKoshaGuide(id) {
