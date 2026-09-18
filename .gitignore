@@ -5,6 +5,7 @@ venv/
 backend/.env
 *.db
 *.log
+backend/kosha_guide_files/
 .DS_Store
 
 # 설치 파일 빌드 산출물(파이썬 실행환경, 다운로드한 wheel, 빌드된 exe 등) -

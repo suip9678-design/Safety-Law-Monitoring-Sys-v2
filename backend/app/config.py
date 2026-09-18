@@ -79,6 +79,14 @@ class Settings:
 
     FRONTEND_DIR: Path = BASE_DIR.parent / "frontend"
 
+    # KOSHA 가이드 원문 PDF 수동 첨부용 저장 폴더. 공공데이터포털
+    # 스마트검색 API는 지침번호/제개정일자뿐 아니라 원문 링크(filepath)도
+    # 실제로는 거의 항상 비어서 오는 경우가 많아(kosha_guide_api.py 상단
+    # 설명 참고), API 동기화만으로는 "가이드를 눌러서 원문을 본다"는 게
+    # 안 되는 경우가 많다. 이 폴더는 그럴 때 사용자가 가이드별로 PDF를
+    # 직접 첨부해서, 그 파일을 서버가 대신 서빙해주기 위한 저장소다.
+    KOSHA_GUIDE_FILES_DIR: Path = BASE_DIR / "kosha_guide_files"
+
     # 대시보드 안전보건 뉴스 자동 스크롤 게시판. 고용노동부/안전보건공단
     # 공식 사이트는 이 프로젝트를 만드는 개발 환경에서 네트워크 접근이
     # 막혀 있어 공식 RSS 주소를 검증하지 못했다(law_api.py의 국가법령정보센터
@@ -109,3 +117,4 @@ class Settings:
 
 
 settings = Settings()
+settings.KOSHA_GUIDE_FILES_DIR.mkdir(parents=True, exist_ok=True)

@@ -27,10 +27,31 @@ function closeKoshaGuideModal() {
   document.getElementById("koshaGuideModalOverlay").hidden = true;
 }
 
+// 서버가 첨부 PDF를 서빙해주는 자기 자신의 URL 패턴 - 이 값과 file_link가
+// 같으면 "직접 붙인 URL"이 아니라 "여기서 업로드한 PDF"라는 뜻이라
+// "첨부 삭제" 버튼을 보여줄 수 있다.
+function servedFileUrl(id) {
+  return `/api/kosha-guides/${id}/file`;
+}
+
+// 새 가이드는 아직 id가 없어 파일을 올릴 서버 자원이 없으므로, 먼저
+// 저장해서 id가 생긴 뒤에만 업로드/삭제 버튼을 쓸 수 있게 한다.
+function refreshFileUploadSection(id, fileLink) {
+  const hasId = Boolean(id);
+  document.getElementById("koshaGuideFileUploadInput").disabled = !hasId;
+  document.getElementById("koshaGuideFileUploadBtn").disabled = !hasId;
+  document.getElementById("koshaGuideFileUploadHint").textContent = hasId
+    ? ""
+    : "먼저 저장한 뒤 PDF를 첨부할 수 있습니다.";
+  const deleteBtn = document.getElementById("koshaGuideFileDeleteBtn");
+  deleteBtn.hidden = !(hasId && fileLink === servedFileUrl(id));
+}
+
 function resetKoshaGuideForm() {
   document.getElementById("koshaGuideFormTitle").textContent = "가이드 추가";
   document.getElementById("koshaGuideForm").reset();
   document.getElementById("koshaGuideId").value = "";
+  refreshFileUploadSection("", "");
 }
 
 export async function loadKoshaGuides() {
@@ -106,6 +127,7 @@ function startEditKoshaGuide(id) {
   document.getElementById("koshaGuideFileLink").value = g.file_link || "";
   document.getElementById("koshaGuideContent").value = g.content || "";
   document.getElementById("koshaGuideNote").value = g.note || "";
+  refreshFileUploadSection(g.id, g.file_link);
   openKoshaGuideModal();
 }
 
@@ -158,6 +180,46 @@ export function initKoshaGuideForm() {
   document.getElementById("koshaGuideFilterInput").addEventListener("input", (e) => {
     koshaGuideFilterText = e.target.value;
     renderKoshaGuidesTable();
+  });
+  document.getElementById("koshaGuideFileUploadBtn").addEventListener("click", async () => {
+    const id = document.getElementById("koshaGuideId").value;
+    const input = document.getElementById("koshaGuideFileUploadInput");
+    const file = input.files[0];
+    if (!id || !file) {
+      toast(!id ? "먼저 저장한 뒤 첨부할 수 있습니다." : "첨부할 PDF 파일을 선택하세요.", true);
+      return;
+    }
+    const formData = new FormData();
+    formData.append("file", file);
+    const btn = document.getElementById("koshaGuideFileUploadBtn");
+    btn.disabled = true;
+    btn.textContent = "업로드 중...";
+    try {
+      const guide = await api(`/api/kosha-guides/${id}/file`, { method: "POST", headers: {}, body: formData });
+      document.getElementById("koshaGuideFileLink").value = guide.file_link || "";
+      refreshFileUploadSection(guide.id, guide.file_link);
+      input.value = "";
+      toast("PDF를 첨부했습니다.");
+      loadKoshaGuides();
+    } catch (e) {
+      toast(`첨부 실패: ${e.message}`, true);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "업로드";
+    }
+  });
+  document.getElementById("koshaGuideFileDeleteBtn").addEventListener("click", async () => {
+    const id = document.getElementById("koshaGuideId").value;
+    if (!id || !confirm("첨부한 PDF를 삭제할까요?")) return;
+    try {
+      const guide = await api(`/api/kosha-guides/${id}/file`, { method: "DELETE" });
+      document.getElementById("koshaGuideFileLink").value = guide.file_link || "";
+      refreshFileUploadSection(guide.id, guide.file_link);
+      toast("첨부를 삭제했습니다.");
+      loadKoshaGuides();
+    } catch (e) {
+      toast(`삭제 실패: ${e.message}`, true);
+    }
   });
 }
 

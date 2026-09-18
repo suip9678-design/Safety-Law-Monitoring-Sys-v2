@@ -1011,6 +1011,19 @@
         return jsonResponse(200, { keywords_checked: keywords, found: 0, added: 0, updated: 0, errors: ["오프라인 데모 모드에서는 실제 공공데이터포털 API를 호출할 수 없습니다."] });
       },
     },
+    // PDF 직접 첨부는 실제 파일을 서버 디스크에 저장하는 기능이라 오프라인
+    // 데모(백엔드 없이 브라우저 메모리만 쓰는 모드)에서는 흉내낼 수 없다 -
+    // 조용히 무시하는 대신 이유를 알려준다.
+    {
+      method: "POST",
+      re: /^\/api\/kosha-guides\/\d+\/file$/,
+      handler: () => errorResponse(400, "오프라인 데모 모드에서는 PDF 첨부를 사용할 수 없습니다. 실제 백엔드 서버를 실행해서 사용해주세요."),
+    },
+    {
+      method: "DELETE",
+      re: /^\/api\/kosha-guides\/\d+\/file$/,
+      handler: () => errorResponse(400, "오프라인 데모 모드에서는 PDF 첨부를 사용할 수 없습니다."),
+    },
   ];
 
   async function mockFetch(urlStr, init) {

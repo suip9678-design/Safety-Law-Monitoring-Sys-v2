@@ -212,7 +212,8 @@
         <h2>등록된 KOSHA 가이드</h2>
         <p class="hint">
           제목을 누르면 동기화/등록 시 받아온 원문 링크로 바로 이동합니다. 원문 링크가 없는 항목은
-          제목이 클릭되지 않습니다 - "수정"에서 원문 링크를 직접 채워두면 그때부터 클릭할 수 있습니다.
+          제목이 클릭되지 않습니다 - "수정"에서 원문 링크를 직접 채워두거나, API 동기화가 링크를 못
+          채워온 경우라면 "수정"에서 PDF 파일을 직접 첨부해도 그때부터 클릭할 수 있습니다.
         </p>
         <div class="row">
           <input id="koshaGuideFilterInput" type="text" placeholder="지침번호/제목/분야로 빠르게 찾기" />
@@ -232,6 +233,19 @@
           <label class="full">제목 <input id="koshaGuideTitle" type="text" required /></label>
           <label>제개정일자 <input id="koshaGuideIssuedDate" type="text" placeholder="YYYYMMDD" /></label>
           <label>원문 링크 <input id="koshaGuideFileLink" type="text" /></label>
+          <div class="full">
+            PDF 직접 첨부
+            <p class="hint">
+              API 동기화는 원문 링크를 채워오지 못하는 경우가 많습니다 - 그럴 때 PDF 파일을 여기서 직접 올려두면,
+              위 "원문 링크"가 이 서버 안에 저장된 그 파일을 가리키도록 자동으로 채워집니다(외부로 전송되지 않습니다).
+            </p>
+            <div class="row">
+              <input id="koshaGuideFileUploadInput" type="file" accept="application/pdf" />
+              <button type="button" id="koshaGuideFileUploadBtn" class="btn">업로드</button>
+              <button type="button" id="koshaGuideFileDeleteBtn" class="link-btn" hidden>첨부 삭제</button>
+            </div>
+            <p id="koshaGuideFileUploadHint" class="hint"></p>
+          </div>
           <label class="full">본문(선택 - 입력해두면 키워드 검색 대상에 포함됩니다) <textarea id="koshaGuideContent"></textarea></label>
           <label class="full">비고 <textarea id="koshaGuideNote"></textarea></label>
           <div class="form-actions">

@@ -4,14 +4,29 @@
 받아올 공개 API가 없어(models.KoshaGuide의 설명 참고), 사용자가 직접
 입력하거나 붙여넣기(일괄 등록)한 것만 검색 대상이 된다."""
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from pathlib import Path
+
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
 from .. import models, schemas, settings_store
+from ..config import settings
 from ..database import get_db
 from ..kosha_guide_api import KoshaGuideApiError, build_client
 
 router = APIRouter(prefix="/api/kosha-guides", tags=["kosha-guides"])
+
+_FILE_SERVE_URL_PREFIX = "/api/kosha-guides/"
+_FILE_SERVE_URL_SUFFIX = "/file"
+
+
+def _uploaded_file_path(guide_id: int) -> Path:
+    return settings.KOSHA_GUIDE_FILES_DIR / f"{guide_id}.pdf"
+
+
+def _served_file_url(guide_id: int) -> str:
+    return f"{_FILE_SERVE_URL_PREFIX}{guide_id}{_FILE_SERVE_URL_SUFFIX}"
 
 
 def _clean(value: str | None) -> str | None:
@@ -131,19 +146,76 @@ def delete_guide(guide_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="가이드를 찾을 수 없습니다.")
     db.delete(guide)
     db.commit()
+    _uploaded_file_path(guide_id).unlink(missing_ok=True)
     return None
+
+
+@router.post("/{guide_id}/file", response_model=schemas.KoshaGuideOut)
+def upload_guide_file(guide_id: int, file: UploadFile, db: Session = Depends(get_db)):
+    """API 동기화가 원문 링크를 못 채워온 가이드에, 사용자가 PDF를 직접
+    올려 첨부한다. 파일은 이 서버(사내 PC/서버)의 로컬 폴더에만 저장되고
+    외부로 전송되지 않으며, 이후 이 가이드의 "원문 링크"는 그 파일을
+    서빙하는 이 서버 자신의 주소(/api/kosha-guides/{id}/file)가 된다."""
+    guide = db.get(models.KoshaGuide, guide_id)
+    if not guide:
+        raise HTTPException(status_code=404, detail="가이드를 찾을 수 없습니다.")
+    filename = (file.filename or "").lower()
+    if file.content_type not in ("application/pdf", "application/x-pdf") and not filename.endswith(".pdf"):
+        raise HTTPException(status_code=400, detail="PDF 파일만 첨부할 수 있습니다.")
+    dest = _uploaded_file_path(guide_id)
+    with dest.open("wb") as out:
+        while chunk := file.file.read(1024 * 1024):
+            out.write(chunk)
+    guide.file_link = _served_file_url(guide_id)
+    db.commit()
+    db.refresh(guide)
+    return guide
+
+
+@router.get("/{guide_id}/file")
+def download_guide_file(guide_id: int, db: Session = Depends(get_db)):
+    guide = db.get(models.KoshaGuide, guide_id)
+    if not guide:
+        raise HTTPException(status_code=404, detail="가이드를 찾을 수 없습니다.")
+    path = _uploaded_file_path(guide_id)
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="첨부된 파일이 없습니다.")
+    return FileResponse(path, media_type="application/pdf", filename=f"{guide.title}.pdf")
+
+
+@router.delete("/{guide_id}/file", response_model=schemas.KoshaGuideOut)
+def delete_guide_file(guide_id: int, db: Session = Depends(get_db)):
+    guide = db.get(models.KoshaGuide, guide_id)
+    if not guide:
+        raise HTTPException(status_code=404, detail="가이드를 찾을 수 없습니다.")
+    _uploaded_file_path(guide_id).unlink(missing_ok=True)
+    if guide.file_link == _served_file_url(guide_id):
+        guide.file_link = None
+        db.commit()
+        db.refresh(guide)
+    return guide
 
 
 def _upsert(db: Session, code: str | None, field: str | None, title: str, issued_date: str | None,
             file_link: str | None, content: str | None = None) -> str:
     """지침번호(code)가 있고 이미 등록된 것과 같으면 덮어쓰고("updated"),
-    아니면 새로 추가한다("added"). bulk-import와 sync가 함께 쓴다."""
-    existing = db.query(models.KoshaGuide).filter(models.KoshaGuide.code == code).first() if code else None
+    아니면 새로 추가한다("added"). bulk-import와 sync가 함께 쓴다.
+
+    code가 없으면 제목(title)으로 대신 매칭한다 - 공공데이터포털 스마트검색
+    API는 지침번호를 거의 항상 비워서 응답하는데(kosha_guide_api.py 상단
+    설명 참고), code로만 매칭하면 "이미 등록된 것과 같은지"를 절대 알 수
+    없어 동기화를 누를 때마다 같은 가이드가 계속 새로 쌓이는 문제가 있었다.
+    사용자가 수동으로 첨부해둔 file_link(PDF 첨부)는 API 재동기화로 다시
+    비워지지 않도록, 새 값이 없을 때는 기존 값을 그대로 유지한다."""
+    q = db.query(models.KoshaGuide).filter(models.KoshaGuide.code == code) if code \
+        else db.query(models.KoshaGuide).filter(models.KoshaGuide.code.is_(None), models.KoshaGuide.title == title)
+    existing = q.first()
     if existing:
         existing.field = field
         existing.title = title
         existing.issued_date = issued_date
-        existing.file_link = file_link
+        if file_link:
+            existing.file_link = file_link
         if content:
             existing.content = content
         return "updated"
