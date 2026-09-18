@@ -59,3 +59,27 @@ def download_and_extract(url: str, max_chars: int = _MAX_CHARS) -> str | None:
     except httpx.HTTPError:
         return None
     return extract_pdf_text(resp.content, max_chars)
+
+
+class KoshaGuideFileError(RuntimeError):
+    pass
+
+
+def fetch_original(url: str) -> tuple[bytes, str]:
+    """원문 URL의 파일을 그대로(텍스트 추출 없이) 받아 (바이트,
+    Content-Type)을 돌려준다 - "원문 열기"를 이 서버가 대신 받아 브라우저로
+    전달(프록시)하기 위한 용도.
+
+    일부 kosha.or.kr 다운로드 링크는 응답에 Content-Disposition 헤더가
+    중복으로 실려 있어(그쪽 서버의 문제로 보인다), 브라우저가 그 주소로
+    직접 들어가면 ERR_RESPONSE_HEADERS_MULTIPLE_CONTENT_DISPOSITION로
+    아예 열리지 않는다. 이 서버(httpx)는 그런 응답도 문제없이 받아올 수
+    있으므로, 받은 내용을 헤더 하나만 깔끔하게 새로 붙여 다시 내려주면
+    이 문제를 피할 수 있다."""
+    try:
+        resp = _client.get(url, follow_redirects=True)
+        resp.raise_for_status()
+    except httpx.HTTPError as exc:
+        raise KoshaGuideFileError(f"원문 파일을 받아오지 못했습니다: {exc}") from exc
+    content_type = resp.headers.get("content-type", "").split(";")[0].strip() or "application/octet-stream"
+    return resp.content, content_type

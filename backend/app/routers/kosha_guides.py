@@ -8,9 +8,10 @@ file_link가 가리키는 PDF 안에 있음), "본문 검색"이 진짜 내용�
 과정이 따로 필요하다 - 그 추출은 kosha_guide_pdf.py가 맡는다."""
 
 import re
+import urllib.parse
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, UploadFile
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
@@ -225,6 +226,48 @@ def download_guide_file(guide_id: int, db: Session = Depends(get_db)):
     if not path.exists():
         raise HTTPException(status_code=404, detail="첨부된 파일이 없습니다.")
     return FileResponse(path, media_type="application/pdf", filename=f"{guide.title}.pdf")
+
+
+@router.get("/{guide_id}/original")
+def open_guide_original(guide_id: int, db: Session = Depends(get_db)):
+    """가이드의 "원문"을 연다 - 로컬에 첨부해둔 PDF면 그 파일을 그대로
+    서빙하고, 외부 URL(API 동기화로 받아온 kosha.or.kr 다운로드 링크 등)
+    이면 이 서버가 대신 받아서 전달한다.
+
+    브라우저가 kosha.or.kr 다운로드 링크로 직접 들어가면 일부 파일에서
+    ERR_RESPONSE_HEADERS_MULTIPLE_CONTENT_DISPOSITION로 아예 열리지 않는
+    경우가 있다(그쪽 서버가 Content-Disposition 헤더를 중복으로 보내는
+    문제로 보인다) - 이 서버가 대신 받아 헤더를 새로 정리해서 내려주면
+    이 문제를 피할 수 있어, 제목/미리보기의 "원문 열기"는 항상 여기를
+    거치도록 한다."""
+    guide = db.get(models.KoshaGuide, guide_id)
+    if not guide or not guide.file_link:
+        raise HTTPException(status_code=404, detail="원문 링크가 없습니다.")
+    served_match = _SERVED_FILE_URL_RE.match(guide.file_link)
+    if served_match:
+        return download_guide_file(int(served_match.group(1)), db)
+    if not guide.file_link.startswith(("http://", "https://")):
+        raise HTTPException(status_code=400, detail="원문 링크 형식을 확인할 수 없습니다.")
+    try:
+        data, content_type = kosha_guide_pdf.fetch_original(guide.file_link)
+    except kosha_guide_pdf.KoshaGuideFileError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    # HTTP 헤더 값은 latin-1만 허용되어, 제목이 한글(대부분의 경우)이면
+    # 그대로 filename="..."에 넣다가는 UnicodeEncodeError로 서버가 죽는다.
+    # FileResponse가 하는 것과 같은 방식(RFC 5987 filename*=utf-8''...)으로
+    # 직접 인코딩해야 한다 - Response는 이 처리를 자동으로 해주지 않는다.
+    filename = f"{guide.title}.pdf"
+    encoded_filename = urllib.parse.quote(filename)
+    content_disposition = (
+        f"inline; filename*=utf-8''{encoded_filename}"
+        if encoded_filename != filename
+        else f'inline; filename="{filename}"'
+    )
+    return Response(
+        content=data,
+        media_type=content_type,
+        headers={"Content-Disposition": content_disposition},
+    )
 
 
 @router.delete("/{guide_id}/file", response_model=schemas.KoshaGuideOut)

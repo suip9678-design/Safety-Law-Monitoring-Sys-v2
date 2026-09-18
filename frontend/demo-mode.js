@@ -1069,6 +1069,16 @@
     return mockFetch(urlStr, init);
   };
 
+  // kosha-guide.js가 "원문 열기" 링크를 백엔드 프록시 주소(/api/kosha-guides/
+  // {id}/original)로 만들지, 데모 데이터의 가짜 URL 그대로 쓸지 판단하는 데
+  // 쓴다 - 오프라인 데모에는 실제로 그 경로를 서빙해줄 백엔드가 없어(fetch()가
+  // 아니라 <a href>로 직접 이동하는 링크라 이 스크립트가 가로챌 수도 없다),
+  // 가짜 URL을 그대로 열게 해야 한다.
+  window.__SAFETY_APP_OFFLINE_DEMO__ = false;
+  backendAvailable.then((available) => {
+    window.__SAFETY_APP_OFFLINE_DEMO__ = !available;
+  });
+
   document.addEventListener("DOMContentLoaded", () => {
     backendAvailable.then((available) => {
       if (available) return;

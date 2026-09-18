@@ -11,9 +11,24 @@ import { highlightSnippet } from "./keyword-search.js";
 // 항목은 (검색엔진 결과로 대신 보내는 등 엉뚱한 곳으로 보내지 않도록)
 // 그냥 클릭할 수 없는 일반 텍스트로 둔다 - 실제로 열어볼 곳이 없다는
 // 것을 그대로 보여주는 편이 낫다.
+// 실제 백엔드에서는 원문 링크로 직접 이동시키지 않고 이 서버가 대신
+// 받아서 내려주는 프록시 주소(/original)를 거친다 - 일부 kosha.or.kr
+// 다운로드 링크는 응답에 Content-Disposition 헤더가 중복으로 실려 있어
+// 브라우저가 직접 들어가면 ERR_RESPONSE_HEADERS_MULTIPLE_CONTENT_DISPOSITION로
+// 아예 안 열리는데, 이 서버(httpx)를 거쳐 헤더를 새로 정리해서 내려주면
+// 그 문제를 피할 수 있다. 오프라인 데모는 그 프록시를 서빙해줄 백엔드
+// 자체가 없으므로(그리고 데모 데이터의 file_link는 어차피 가짜라 실제
+// 파일이 있는 것도 아니므로) 원래 값을 그대로 쓴다.
+function guideOriginalUrl(g) {
+  if (!g.file_link) return null;
+  if (window.__SAFETY_APP_OFFLINE_DEMO__) return g.file_link;
+  return `/api/kosha-guides/${g.id}/original`;
+}
+
 function titleCell(g) {
-  return g.file_link
-    ? `<a href="${escapeHtml(g.file_link)}" target="_blank" rel="noopener">${escapeHtml(g.title)}</a>`
+  const url = guideOriginalUrl(g);
+  return url
+    ? `<a href="${escapeHtml(url)}" target="_blank" rel="noopener">${escapeHtml(g.title)}</a>`
     : `<span title="원문 링크가 등록되어 있지 않습니다">${escapeHtml(g.title)}</span>`;
 }
 
@@ -311,8 +326,9 @@ function openKoshaGuidePreview(guideId) {
     ? highlightSnippet(r.content, lastSearchQuery)
     : `<span class="hint">이 가이드는 아직 본문이 캐시되지 않았습니다. "본문 캐시 채우기"를 먼저 실행해두면 다음부터는 여기서 전체 내용을 바로 볼 수 있습니다 - 지금은 아래 "원문 열기"로 실제 문서를 직접 확인해주세요.</span>`;
   const openLink = document.getElementById("koshaGuidePreviewOpenLink");
-  openLink.href = r.file_link || "#";
-  openLink.hidden = !r.file_link;
+  const originalUrl = guideOriginalUrl(r);
+  openLink.href = originalUrl || "#";
+  openLink.hidden = !originalUrl;
   document.getElementById("koshaGuidePreviewModalOverlay").hidden = false;
 }
 
