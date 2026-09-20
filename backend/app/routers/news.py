@@ -1,7 +1,7 @@
 import datetime
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import func
+from sqlalchemy import func, not_
 from sqlalchemy.orm import Session
 
 from .. import models, news_service, schemas, settings_store
@@ -28,6 +28,26 @@ def _parse_date(value: str | None) -> datetime.datetime | None:
         return None
 
 
+def _out(row: models.NewsItem) -> schemas.NewsItemOut:
+    """중대재해 피드 기사 중 사망사고가 아닌 것은 "안전보건 이슈"(issue)로 보여준다."""
+    out = schemas.NewsItemOut.model_validate(row)
+    if row.is_nonfatal_accident:
+        out.category, out.source_name = "issue", "안전보건 이슈"
+    return out
+
+
+def _by_category(query, category: str | None, include_issues: bool):
+    """category="accident"는 사망사고만, "issue"는 그 외 중대재해 피드 기사만.
+    category가 없을 때는 include_issues인 화면(뉴스 탭)만 이슈를 함께 보여준다."""
+    if category == "issue":
+        return query.filter(models.NewsItem.is_nonfatal_accident)
+    if category:
+        query = query.filter(models.NewsItem.category == category)
+    if category or not include_issues:
+        query = query.filter(not_(models.NewsItem.is_nonfatal_accident))
+    return query
+
+
 @router.get("", response_model=list[schemas.NewsItemOut])
 def list_news(category: str | None = None, limit: int = 40, db: Session = Depends(get_db)):
     if not _is_enabled(db):
@@ -35,11 +55,9 @@ def list_news(category: str | None = None, limit: int = 40, db: Session = Depend
     # 발행일(published_at)이 없는 항목(일부 피드는 안 줄 수 있음)은 가져온
     # 시각(fetched_at)을 대신 써서 정렬한다 - 둘 다 최신순이라는 목적은 같다.
     order_col = func.coalesce(models.NewsItem.published_at, models.NewsItem.fetched_at).desc()
-    query = db.query(models.NewsItem)
-    if category:
-        query = query.filter(models.NewsItem.category == category)
+    query = _by_category(db.query(models.NewsItem), category, include_issues=False)
     rows = query.order_by(order_col).limit(min(max(limit, 1), 200)).all()
-    return rows
+    return [_out(r) for r in rows]
 
 
 @router.get("/search", response_model=schemas.NewsSearchResult)
@@ -61,9 +79,7 @@ def search_news(
     "보관 기간")으로 한정된다 - 그 기간이 지나고 "보관" 처리도 안 해둔
     기사는 이미 정리되어 DB에 없다."""
     order_col = func.coalesce(models.NewsItem.published_at, models.NewsItem.fetched_at)
-    query = db.query(models.NewsItem)
-    if category:
-        query = query.filter(models.NewsItem.category == category)
+    query = _by_category(db.query(models.NewsItem), category, include_issues=True)
     if q and q.strip():
         query = query.filter(models.NewsItem.title.ilike(f"%{q.strip()}%"))
     if archived is not None:
@@ -77,7 +93,7 @@ def search_news(
 
     total = query.count()
     items = query.order_by(order_col.desc()).limit(min(max(limit, 1), _SEARCH_LIMIT_MAX)).all()
-    return schemas.NewsSearchResult(items=items, total=total)
+    return schemas.NewsSearchResult(items=[_out(r) for r in items], total=total)
 
 
 @router.patch("/{news_id}/archive", response_model=schemas.NewsItemOut)
@@ -91,7 +107,7 @@ def set_news_archived(news_id: int, payload: schemas.NewsArchiveUpdate, db: Sess
     item.is_archived = payload.is_archived
     db.commit()
     db.refresh(item)
-    return item
+    return _out(item)
 
 
 @router.post("/sync")

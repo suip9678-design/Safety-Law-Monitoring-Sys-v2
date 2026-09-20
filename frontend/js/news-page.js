@@ -12,7 +12,7 @@ const newsPageState = { category: "", q: "", dateFrom: "", dateTo: "", archivedO
 
 // 검색어가 없으면(날짜/카테고리/보관함 필터만 걸었을 때) 그래도 뭔가 검색은
 // 되도록 카테고리에 맞는 기본 검색어를 대신 쓴다.
-const NEWS_CATEGORY_SEARCH_HINT = { moel: "고용노동부 안전보건", kosha: "안전보건공단", accident: "중대재해" };
+const NEWS_CATEGORY_SEARCH_HINT = { moel: "고용노동부 안전보건", kosha: "안전보건공단", accident: "중대재해 사망", issue: "안전보건 이슈" };
 
 function externalNewsSearchQuery() {
   return newsPageState.q || NEWS_CATEGORY_SEARCH_HINT[newsPageState.category] || "안전보건 중대재해";

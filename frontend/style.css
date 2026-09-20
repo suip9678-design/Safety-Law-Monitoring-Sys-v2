@@ -714,6 +714,7 @@ tr.law-row-alert td:first-child { border-left: 3px solid var(--danger); }
 .news-board-source.news-src-moel { background: var(--primary-subtle); color: var(--primary-dark); }
 .news-board-source.news-src-kosha { background: var(--ok-bg); color: var(--ok-text); }
 .news-board-source.news-src-accident { background: var(--pending-bg); color: var(--pending-text); }
+.news-board-source.news-src-issue { background: var(--warn-bg); color: var(--warn-text); }
 
 .news-board-title {
   overflow: hidden;

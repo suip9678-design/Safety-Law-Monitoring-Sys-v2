@@ -2,6 +2,9 @@ import datetime
 
 from sqlalchemy import (
     Boolean,
+    and_,
+    not_,
+    or_,
     DateTime,
     ForeignKey,
     Integer,
@@ -9,6 +12,7 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
 )
+from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .database import Base
@@ -20,6 +24,11 @@ REVIEW_STATUSES = ["미검토", "검토중", "반영완료", "해당없음"]
 SOURCE_TYPES = ["law", "admrul"]
 
 DOC_TYPES = ["절차서", "지침서", "작업표준", "기타"]
+
+
+# 중대재해 뉴스 피드에서 "실제 사망사고"로 볼 제목 키워드.
+# ponytail: 제목 문자열 매칭이라 "사망자 감소" 같은 통계 기사나 "추락사고"(사망 아님)도 걸린다 - 필요하면 제외어를 추가.
+FATAL_KEYWORDS = ("사망", "숨져", "숨진", "숨졌", "참변", "참사", "유족", "추락사", "끼임사", "목숨", "압사", "질식사", "익사")
 
 
 def now() -> datetime.datetime:
@@ -267,3 +276,11 @@ class NewsItem(Base):
     is_archived: Mapped[bool] = mapped_column(Boolean, default=False)
 
     __table_args__ = (UniqueConstraint("category", "guid", name="uq_news_category_guid"),)
+
+    @hybrid_property
+    def is_nonfatal_accident(self) -> bool:
+        return self.category == "accident" and not any(k in self.title for k in FATAL_KEYWORDS)
+
+    @is_nonfatal_accident.expression
+    def is_nonfatal_accident(cls):
+        return and_(cls.category == "accident", not_(or_(*[cls.title.contains(k) for k in FATAL_KEYWORDS])))

@@ -202,7 +202,7 @@ DEMO_NEWS: dict[str, list[dict]] = {
             "guid": "demo-news-accident-1",
         },
         {
-            "title": "[예시] 건설현장 추락사고 중대재해 판단, 원청 안전보건관리체계 점검",
+            "title": "[예시] 건설현장 추락사고로 근로자 1명 사망, 원청 안전보건관리체계 점검",
             "link": "https://www.moel.go.kr",
             "guid": "demo-news-accident-2",
         },
