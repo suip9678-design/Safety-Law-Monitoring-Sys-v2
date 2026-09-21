@@ -10,6 +10,9 @@ REQ_FILE="${1:-backend/requirements.txt}"
 PY_PAYLOAD_DIR="${2:-build/payload/python}"
 PY_TAG="${PY_TAG:-311}"
 SITE_PACKAGES="$PY_PAYLOAD_DIR/Lib/site-packages"
+# Windows(Git Bash)의 python3는 Store 안내 스텁일 수 있어, 실제로 실행되는 쪽을 쓴다.
+PYBIN=python3
+python3 -c "" >/dev/null 2>&1 || PYBIN=python
 
 WHEEL_DIR="$(mktemp -d)"
 echo "Windows(win_amd64)용 wheel 다운로드 중..."
@@ -25,7 +28,7 @@ pip download \
 mkdir -p "$SITE_PACKAGES"
 for whl in "$WHEEL_DIR"/*.whl; do
   echo "설치: $(basename "$whl")"
-  python3 -m zipfile -e "$whl" "$SITE_PACKAGES"
+  "$PYBIN" -m zipfile -e "$whl" "$SITE_PACKAGES"
 done
 
 rm -rf "$WHEEL_DIR"

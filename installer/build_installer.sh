@@ -74,7 +74,10 @@ echo "[4/6] 바탕화면 실행 파일 아이콘/버전 정보 리소스 준비"
 if ! command -v go-winres >/dev/null 2>&1; then
   echo "  go-winres가 없어 설치합니다..."
   GOBIN="$(go env GOPATH)/bin" go install github.com/tc-hib/go-winres@latest
-  export PATH="$(go env GOPATH)/bin:$PATH"
+  # Windows(Git Bash)에서는 GOPATH가 C:... 형식이라 PATH에 그대로 못 붙여 cygpath로 바꾼다.
+  WINRES_DIR="$(go env GOPATH)/bin"
+  if command -v cygpath >/dev/null 2>&1; then WINRES_DIR="$(cygpath -u "$WINRES_DIR")"; fi
+  export PATH="$WINRES_DIR:$PATH"
 fi
 ( cd "$INSTALLER_DIR/launcher" && go-winres make --arch amd64 )
 
@@ -86,7 +89,7 @@ echo "[5/6] 바탕화면 실행 파일(launcher.exe) 빌드"
   GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -ldflags "-H=windowsgui -s -w" -o launcher.exe . )
 
 echo "[6/6] 설치 프로그램(NSIS) 빌드"
-( cd "$INSTALLER_DIR" && makensis setup.nsi )
+( cd "$INSTALLER_DIR" && makensis -INPUTCHARSET UTF8 setup.nsi )
 
 echo
 echo "완료: $BUILD_DIR/SafetyLawMonitorSetup.exe"
