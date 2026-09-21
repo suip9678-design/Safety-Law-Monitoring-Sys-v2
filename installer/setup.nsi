@@ -30,7 +30,7 @@ Unicode true
 !include "LogicLib.nsh"
 
 Name "안전보건 법령·고시 Monitoring"
-OutFile "build\install.exe"
+OutFile "build\SafetyLawMonitor_Setup.exe"
 InstallDir "$LOCALAPPDATA\Programs\SafetyLawMonitor"
 ; user - 관리자 권한을 요구하지 않는다(설치할 때 "이 앱이 장치를 변경하도록
 ; 허용하시겠어요?" 창이 뜨지 않는다).
@@ -276,7 +276,7 @@ Section "Uninstall"
   ; 문의 대신 할 수 있는 것을 안내한다.
   IfSilent done_leftover_check
   ${If} ${FileExists} "$INSTDIR\python\pythonw.exe"
-    MessageBox MB_OK|MB_ICONEXCLAMATION "일부 파일이 사용 중이라 완전히 지우지 못했습니다.$\r$\n$\r$\n열려 있는 안전보건 프로그램 창을 모두 닫은 뒤, 설치 파일(install.exe)을 다시 실행해 '삭제만 하기'를 한 번 더 눌러주세요."
+    MessageBox MB_OK|MB_ICONEXCLAMATION "일부 파일이 사용 중이라 완전히 지우지 못했습니다.$\r$\n$\r$\n열려 있는 안전보건 프로그램 창을 모두 닫은 뒤, 설치 파일(SafetyLawMonitor_Setup.exe)을 다시 실행해 '삭제만 하기'를 한 번 더 눌러주세요."
   ${EndIf}
   done_leftover_check:
 SectionEnd
