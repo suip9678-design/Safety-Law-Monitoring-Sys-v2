@@ -15,11 +15,8 @@ from __future__ import annotations
 import io
 
 import httpx
-import truststore
 from pypdf import PdfReader
 from pypdf.errors import PdfReadError
-
-truststore.inject_into_ssl()
 
 _client = httpx.Client(timeout=30.0)
 

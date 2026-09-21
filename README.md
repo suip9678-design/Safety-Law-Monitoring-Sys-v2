@@ -78,6 +78,9 @@
 
 > OC 키가 없어도 **데모 모드**로 샘플 법령/고시 데이터를 이용해 화면 전체를 미리 확인할 수 있습니다.
 
+> 사내 부서원 배포판(설치 파일)은 배포 담당자가 OC 키·KOSHA 가이드 인증키를 DB에 미리 설정해서 만들기 때문에,
+> 사용자용 문서(도움말, 설치안내)에는 인증키 발급·입력 절차를 넣지 않았습니다.
+
 ### 2) 백엔드 설치 및 실행
 
 ```bash
@@ -139,13 +142,8 @@ Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 서버를 상시 띄워두는 경우 `.env`의 `AUTO_SYNC_INTERVAL_HOURS`(기본 24)에 따라 서버가 내부적으로
 주기 동기화를 수행합니다.
 
-서버를 상시 띄워두지 않고 필요할 때만 켠다면, `scripts/sync_cli.py`를 OS의 cron(리눅스/macOS) 또는
-작업 스케줄러(Windows)에 등록해 매일 실행하세요.
-
-```bash
-# crontab -e 예시: 매일 오전 8시 실행 후 로그 남기기
-0 8 * * * cd /path/to/test-trans/backend && /path/to/.venv/bin/python ../scripts/sync_cli.py >> sync.log 2>&1
-```
+서버를 켜두지 않은 동안은 동기화가 돌지 않습니다. 켜져 있지 않았다면 다음에 켰을 때 대시보드의
+**새로고침** 버튼(또는 자동 유지보수)으로 최신 상태를 확인하세요.
 
 ## 안전보건 뉴스 자동 스크롤 게시판 (v2 신규)
 
@@ -206,8 +204,6 @@ frontend/
     document-impacts.js    "문서 기준 개정 필요 사항" 표 렌더링 (대시보드/사규 개정 이력 공용)
     status-actions.js      개정 상태 변경 드롭다운 공통 배선
     alarm.js / help.js / sync.js   알림 종 / 도움말 모달 / 새로고침(동기화) 버튼
-scripts/
-  sync_cli.py             cron 등록용 동기화 스크립트
 ```
 
 ## 국가법령정보센터 API 응답 필드 확인 방법 (중요)
@@ -224,7 +220,6 @@ curl "https://www.law.go.kr/DRF/lawSearch.do?OC=발급받은OC값&target=admrul&
 
 ## 향후 확장 아이디어
 
-- 클라우드 배포(Docker/서버) 후 팀 전체가 접속하는 상시 대시보드로 전환
 - 개정 이력에 실제 조문 비교(diff) 링크 연결
 - 담당자별 알림 채널(Slack 등) 추가
 - 법령 카테고리별(제조업/건설업 등 업종 특화) 추천 추적 목록 제공

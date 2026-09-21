@@ -14,7 +14,7 @@ import { initHelpModal } from "./help.js";
 import { initKeywordSearch } from "./keyword-search.js";
 import { initNewsBoard } from "./news.js";
 import { initNewsPage } from "./news-page.js";
-import { loadIntegrationStatus, initIntegrationStatusModal } from "./integration-status.js";
+import { loadIntegrationStatus, initIntegrationAlert } from "./integration-status.js";
 import { loadDashboard } from "./dashboard.js";
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -36,7 +36,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initKeywordSearch();
   initNewsBoard();
   initNewsPage();
-  initIntegrationStatusModal();
+  initIntegrationAlert();
 
   loadDashboard();
   loadIntegrationStatus();

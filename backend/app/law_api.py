@@ -18,15 +18,6 @@ from __future__ import annotations
 
 import xml.etree.ElementTree as ET
 
-# Trust the OS certificate store (Windows Certificate Store / macOS
-# Keychain / Linux system trust) instead of the bundled certifi list.
-# Company networks often intercept HTTPS with a corporate root CA that
-# Windows itself trusts but Python's default cert bundle does not,
-# which otherwise breaks this call with CERTIFICATE_VERIFY_FAILED.
-import truststore
-
-truststore.inject_into_ssl()
-
 import httpx
 
 from . import fixtures

@@ -13,18 +13,8 @@ def _bool(value: str | None, default: bool = False) -> bool:
     return value.strip().lower() in ("1", "true", "yes", "on")
 
 
-def _normalize_db_url(url: str) -> str:
-    # Render/Neon/Heroku-style Postgres URLs use the "postgres://" scheme,
-    # but SQLAlchemy 2.x requires "postgresql://".
-    if url.startswith("postgres://"):
-        return "postgresql://" + url[len("postgres://"):]
-    return url
-
-
 class Settings:
-    DATABASE_URL: str = _normalize_db_url(
-        os.getenv("DATABASE_URL", f"sqlite:///{BASE_DIR / 'safety_law_tracker.db'}")
-    )
+    DATABASE_URL: str = os.getenv("DATABASE_URL", f"sqlite:///{BASE_DIR / 'safety_law_tracker.db'}")
 
     LAW_API_OC: str = os.getenv("LAW_API_OC", "").strip()
 

@@ -44,14 +44,6 @@ import urllib.parse
 import xml.etree.ElementTree as ET
 from typing import Any
 
-# 회사 네트워크의 SSL 검사 프록시(Windows/macOS 시스템 인증서 저장소는
-# 신뢰하지만 Python 기본 certifi 번들에는 없는 사내 루트 CA를 쓰는 경우)
-# 때문에 CERTIFICATE_VERIFY_FAILED로 막히는 걸 피하려고 law_api.py와
-# 동일하게 OS 인증서 저장소를 신뢰한다.
-import truststore
-
-truststore.inject_into_ssl()
-
 import httpx
 
 _client = httpx.Client(timeout=15.0)

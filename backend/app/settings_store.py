@@ -11,21 +11,6 @@ from sqlalchemy.orm import Session
 from . import models
 from .config import settings as env_settings
 
-_KEYS = [
-    "law_api_oc",
-    "kosha_guide_api_key",
-    "kosha_guide_api_url",
-    "new_admrul_keywords",
-    "new_admrul_department",
-    "new_admrul_since_date",
-    "full_law_cache_enabled",
-    "news_ticker_enabled",
-    "news_source_moel_url",
-    "news_source_kosha_url",
-    "news_source_accident_url",
-    "news_retention_days",
-]
-
 _ENV_DEFAULTS = {
     "law_api_oc": env_settings.LAW_API_OC,
     "kosha_guide_api_key": env_settings.KOSHA_GUIDE_API_KEY,
@@ -45,7 +30,7 @@ _ENV_DEFAULTS = {
 def get_all(db: Session) -> dict[str, str]:
     rows = {row.key: row.value for row in db.query(models.AppSetting).all()}
     result = dict(_ENV_DEFAULTS)
-    for key in _KEYS:
+    for key in _ENV_DEFAULTS:
         # 사용자가 화면에서 빈 값으로 저장한 것("필터 없음"처럼 빈 값
         # 자체가 의미 있는 설정)과, 아예 한 번도 저장한 적 없는 것을
         # 구분해야 한다. 예전에는 저장된 값이 빈 문자열이면 무조건 .env
@@ -65,7 +50,7 @@ def get(db: Session, key: str) -> str:
 
 def set_values(db: Session, values: dict[str, str]) -> None:
     for key, value in values.items():
-        if key not in _KEYS or value is None:
+        if key not in _ENV_DEFAULTS or value is None:
             continue
         row = db.get(models.AppSetting, key)
         if row is None:

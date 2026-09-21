@@ -163,14 +163,14 @@ export async function loadSettings() {
     document.getElementById("settingOc").value = s.law_api_oc || "";
     document.getElementById("settingOc").placeholder = "OC 키";
     document.getElementById("ocStatus").textContent = s.demo_mode
-      ? "OC 키가 설정되지 않아 데모 데이터로 동작 중입니다."
+      ? "OC 키가 설정되지 않아 데모 데이터로 동작 중입니다. 프로그램을 배포한 담당자에게 문의하세요."
       : `현재 동기화된 OC 키: ${s.law_api_oc} (실제 국가법령정보센터 API로 동작 중)`;
 
     document.getElementById("koshaGuideApiKey").value = s.kosha_guide_api_key || "";
     document.getElementById("koshaGuideApiUrl").value = s.kosha_guide_api_url || "";
     document.getElementById("koshaGuideApiStatus").textContent = s.kosha_guide_api_key_set
-      ? "인증키가 저장되어 있습니다. KOSHA 가이드 탭에서 \"API로 동기화\"를 눌러보세요."
-      : "아직 인증키가 없습니다. 키를 저장하면 KOSHA 가이드 탭에서 자동 동기화를 쓸 수 있습니다.";
+      ? "설정되어 있습니다. KOSHA 가이드 탭에서 \"API로 동기화\"를 눌러보세요."
+      : "아직 설정되지 않아 KOSHA 가이드 탭의 자동 동기화를 쓸 수 없습니다. 프로그램을 배포한 담당자에게 문의하세요.";
 
     document.getElementById("autoSyncHint").textContent = s.auto_sync_interval_hours > 0
       ? `서버가 실행 중인 동안 ${s.auto_sync_interval_hours}시간마다 자동으로 동기화합니다. (.env의 AUTO_SYNC_INTERVAL_HOURS)`

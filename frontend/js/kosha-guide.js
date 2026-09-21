@@ -494,7 +494,7 @@ export function initKoshaGuideSync() {
       loadKoshaGuides();
     } catch (e) {
       statusEl.textContent = `동기화 실패: ${e.message}`;
-      toast(`동기화 실패: ${e.message} — 설정 > KOSHA 가이드 Open API에서 인증키/요청 URL을 확인하세요.`, true);
+      toast(`동기화 실패: ${e.message} — 잠시 후 다시 시도하고, 계속 안 되면 프로그램을 배포한 담당자에게 문의하세요.`, true);
     } finally {
       btn.disabled = false;
       btn.textContent = "API로 동기화";
