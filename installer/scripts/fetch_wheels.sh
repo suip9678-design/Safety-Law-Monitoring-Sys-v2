@@ -16,7 +16,7 @@ python3 -c "" >/dev/null 2>&1 || PYBIN=python
 
 WHEEL_DIR="$(mktemp -d)"
 echo "Windows(win_amd64)용 wheel 다운로드 중..."
-pip download \
+"$PYBIN" -m pip download \
   --platform win_amd64 \
   --python-version "$PY_TAG" \
   --implementation cp \

@@ -30,7 +30,7 @@ Unicode true
 !include "LogicLib.nsh"
 
 Name "안전보건 법령·고시 Monitoring"
-OutFile "build\SafetyLawMonitorSetup.exe"
+OutFile "build\install.exe"
 InstallDir "$LOCALAPPDATA\Programs\SafetyLawMonitor"
 ; user - 관리자 권한을 요구하지 않는다(설치할 때 "이 앱이 장치를 변경하도록
 ; 허용하시겠어요?" 창이 뜨지 않는다).
@@ -58,13 +58,13 @@ SetCompressor /SOLID lzma
   ; 런처의 자식 프로세스라, 이 옵션 하나로 서버까지 같이 정리된다).
   nsExec::ExecToLog 'taskkill /F /T /IM "${DESKTOP_EXE_NAME}"'
   Pop $0
-  nsExec::ExecToLog 'taskkill /F /T /IM "launcher.exe"'
-  Pop $0
-  ; 혹시 런처보다 서버가 오래 살아남은 경우(런처만 강제 종료된 뒤 남은
-  ; 서버 프로세스)를 대비한 정리. 실행 파일 경로가 이 프로그램의 설치
-  ; 폴더 안인 것만 골라서 종료하므로, 사용자가 쓰는 다른 파이썬 프로그램은
-  ; 건드리지 않는다.
-  nsExec::ExecToLog 'powershell -NoProfile -WindowStyle Hidden -Command "Get-Process pythonw -ErrorAction SilentlyContinue | Where-Object { $$_.Path -like $\'*SafetyLawMonitor*$\' } | Stop-Process -Force"'
+  ; 바탕화면 실행 파일 이름으로 종료한 뒤 남은 것(설치 폴더의 launcher.exe
+  ; 복사본, 런처보다 오래 살아남은 서버 pythonw.exe)을 정리한다. 실행 파일
+  ; 경로가 이 프로그램의 설치 폴더 안인 것만 골라서 종료하므로, 이름만 같은
+  ; 다른 프로그램(다른 회사의 launcher.exe, 사용자가 쓰는 다른 파이썬 등)은
+  ; 건드리지 않는다. uninstall.exe는 설치 폴더 안에서 실행될 수 있어(재설치가
+  ; 부르는 `_?=` 방식) 자기 자신을 종료시키지 않도록 제외한다.
+  nsExec::ExecToLog 'powershell -NoProfile -WindowStyle Hidden -Command "Get-Process -ErrorAction SilentlyContinue | Where-Object { $$_.Path -like $\'*SafetyLawMonitor*$\' -and $$_.ProcessName -ne $\'uninstall$\' } | Stop-Process -Force"'
   Pop $0
   ; 종료된 프로세스가 붙잡고 있던 파일 핸들이 실제로 풀릴 때까지 잠깐 기다린다.
   Sleep 1500
@@ -205,7 +205,15 @@ Section "Install"
   File /r "build\payload\python\*.*"
 
   SetOutPath "$INSTDIR\app"
-  File /r "build\payload\app\*.*"
+  File /r /x "*.db" "build\payload\app\*.*"
+
+  ; 설치 파일에 든 초기 DB는 이 PC에 DB가 아직 없을 때만 넣는다. 삭제/재설치
+  ; 후에도 사용자가 모아둔 데이터가 남아 있으므로, 그걸 초기 DB로 덮어쓰면
+  ; 등록한 법령·검토 이력이 재설치 순간 사라진다.
+  SetOutPath "$INSTDIR\app\backend"
+  ${IfNot} ${FileExists} "$INSTDIR\app\backend\safety_law_tracker.db"
+    File /nonfatal "build\payload\app\backend\safety_law_tracker.db"
+  ${EndIf}
 
   SetOutPath "$INSTDIR"
   File "launcher\launcher.exe"
@@ -263,4 +271,12 @@ Section "Uninstall"
   IfSilent skip_uninstall_msg
     MessageBox MB_OK|MB_ICONINFORMATION "프로그램을 제거했습니다.$\r$\n$\r$\n그동안 모아둔 법령·고시 데이터(DB 파일)는 다음 위치에 그대로 남아 있습니다:$\r$\n$INSTDIR\app\backend$\r$\n$\r$\n필요 없으시면 이 폴더를 직접 삭제하셔도 됩니다."
   skip_uninstall_msg:
+
+  ; 그래도 프로그램 파일이 남았다면(다른 프로그램이 붙잡고 있는 경우) 재부팅이나
+  ; 문의 대신 할 수 있는 것을 안내한다.
+  IfSilent done_leftover_check
+  ${If} ${FileExists} "$INSTDIR\python\pythonw.exe"
+    MessageBox MB_OK|MB_ICONEXCLAMATION "일부 파일이 사용 중이라 완전히 지우지 못했습니다.$\r$\n$\r$\n열려 있는 안전보건 프로그램 창을 모두 닫은 뒤, 설치 파일(install.exe)을 다시 실행해 '삭제만 하기'를 한 번 더 눌러주세요."
+  ${EndIf}
+  done_leftover_check:
 SectionEnd

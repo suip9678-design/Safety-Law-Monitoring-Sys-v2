@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 배포용 Windows 설치 파일(SafetyLawMonitorSetup.exe)을 만드는 전체 과정을
+# 배포용 Windows 설치 파일(install.exe)을 만드는 전체 과정을
 # 순서대로 실행한다.
 #
 # 사용법:
@@ -59,7 +59,15 @@ echo "[2/5] 라이브러리(wheel) 준비"
 if [[ -n "$SKIP_FETCH" && -d "$PAYLOAD_PY/Lib/site-packages/fastapi" ]]; then
   echo "  --skip-fetch: 기존 site-packages 재사용"
 else
-  bash "$INSTALLER_DIR/scripts/fetch_wheels.sh" "$INSTALLER_DIR/requirements-windows.txt" "$PAYLOAD_PY"
+  # backend/requirements.txt에서 자동으로 만든다(별도 복사본을 두면 패키지를 추가할 때
+  # 갱신을 빠뜨려 설치본이 시작하다 죽는다 - pypdf/python-multipart 누락으로 실제 발생).
+  # uvicorn[standard] 대신 순정 uvicorn만 쓴다: standard의 uvloop는 유닉스 전용이라
+  # Windows용 wheel이 없는데, `pip download --platform win_amd64`는 조건부 의존성을
+  # 빌드 OS(Linux) 기준으로 평가해 uvloop를 요구해버린다(pip의 알려진 한계).
+  # 이 앱은 웹소켓/--reload를 배포판에서 쓰지 않아 순정 uvicorn으로 충분하다.
+  WIN_REQ="$BUILD_DIR/requirements-windows.txt"
+  sed 's/uvicorn\[standard\]/uvicorn/' "$REPO_ROOT/backend/requirements.txt" > "$WIN_REQ"
+  bash "$INSTALLER_DIR/scripts/fetch_wheels.sh" "$WIN_REQ" "$PAYLOAD_PY"
 fi
 
 echo "[3/5] 앱 소스 준비"
@@ -92,4 +100,4 @@ echo "[6/6] 설치 프로그램(NSIS) 빌드"
 ( cd "$INSTALLER_DIR" && makensis -INPUTCHARSET UTF8 setup.nsi )
 
 echo
-echo "완료: $BUILD_DIR/SafetyLawMonitorSetup.exe"
+echo "완료: $BUILD_DIR/install.exe"
