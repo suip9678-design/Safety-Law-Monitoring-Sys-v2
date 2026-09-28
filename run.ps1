@@ -114,7 +114,12 @@ function Update-FromGit {
     # "받아졌는지 안 받아졌는지 헷갈림" 문제를 없앤다.
     $beforeCommit = (git rev-parse --short HEAD 2>$null).Trim()
 
-    $hasLocalChanges = -not [string]::IsNullOrWhiteSpace((git status --porcelain))
+    # git stash push는 기본적으로 untracked 파일을 건드리지 않으므로(주석
+    # 참고), 이 판정도 추적 중인 파일 변경분만 봐야 한다 - 그렇지 않으면
+    # untracked 파일만 있을 때도 "보관할 게 있다"고 잘못 판단해 stash push가
+    # 아무것도 못 담고, 뒤이은 stash pop이 "No stash entries found"로 실패해
+    # 실제로는 아무 문제도 없는데 "충돌해서 못 합쳤다"는 오경보가 뜬다.
+    $hasLocalChanges = -not [string]::IsNullOrWhiteSpace((git status --porcelain --untracked-files=no))
     if ($hasLocalChanges) {
         Write-Host "  (로컬에 커밋되지 않은 변경사항이 있어 잠깐 보관해두고 받습니다...)" -ForegroundColor DarkGray
         git stash push -m "run.bat 자동 보관 ($(Get-Date -Format 'yyyy-MM-dd HH:mm'))" | Out-Null
