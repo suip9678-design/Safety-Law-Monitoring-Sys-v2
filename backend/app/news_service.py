@@ -16,6 +16,7 @@ from __future__ import annotations
 import datetime
 import email.utils
 import logging
+import re
 import threading
 import xml.etree.ElementTree as ET
 
@@ -95,6 +96,54 @@ def fetch_feed(url: str) -> list[dict]:
     return items
 
 
+def _title_tokens(title: str) -> set[str]:
+    """구글 뉴스 RSS는 같은 사건을 여러 언론사가 각자 다른 문구의 제목으로
+    보도한다("실제 제목 - 언론사명" 형태로 언론사 접미사도 붙는다). 정확히
+    같은 문자열인지가 아니라 "같은 사건을 가리키는지"를 비교해야 하므로,
+    언론사 접미사를 뗀 제목을 어절 단위로 쪼갠 집합을 만든다 - 이 집합끼리
+    겹치는 정도(Jaccard 유사도)로 같은 사건 여부를 판단한다."""
+    core = title.rsplit(" - ", 1)[0] if " - " in title else title
+    return {tok for tok in re.split(r"[^0-9A-Za-z가-힣]+", core) if len(tok) > 1}
+
+
+# ponytail: 형태소 분석 없이 어절 단위 Jaccard 유사도로 "같은 사건"을 근사
+# 판정하는 휴리스틱이다 - 조사가 안 떨어지거나 어순이 크게 다르면 놓칠 수
+# 있다. 오탐(서로 다른 사건을 합침)·누락(중복을 못 잡음)이 실제로 자주
+# 보이면 형태소 분석기 도입을 검토할 것.
+_SAME_STORY_THRESHOLD = 0.4
+
+
+def _is_same_story(a: set[str], b: set[str]) -> bool:
+    if not a or not b:
+        return False
+    union = a | b
+    return bool(union) and len(a & b) / len(union) >= _SAME_STORY_THRESHOLD
+
+
+def _dedupe_existing(db, category: str) -> None:
+    """이미 저장된 항목 중 언론사만 다르게 같은 사건을 보도한 게 여러 건
+    있으면 가장 최근 것만 남기고 정리한다. 아래 삽입 시점 dedup을 넣기
+    전에 이미 여러 건씩 쌓여 있던 중복 건을 청소하기 위함. "보관" 처리해둔
+    항목은 사용자가 남기기로 한 것이므로 건드리지 않는다."""
+    order_col = func.coalesce(models.NewsItem.published_at, models.NewsItem.fetched_at)
+    rows = (
+        db.query(models.NewsItem.id, models.NewsItem.title)
+        .filter(models.NewsItem.category == category, models.NewsItem.is_archived.is_(False))
+        .order_by(order_col.desc())
+        .all()
+    )
+    kept_tokens: list[set[str]] = []
+    dup_ids: list[int] = []
+    for news_id, title in rows:
+        tokens = _title_tokens(title)
+        if any(_is_same_story(tokens, kept) for kept in kept_tokens):
+            dup_ids.append(news_id)
+        else:
+            kept_tokens.append(tokens)
+    if dup_ids:
+        db.query(models.NewsItem).filter(models.NewsItem.id.in_(dup_ids)).delete(synchronize_session=False)
+
+
 def configured_sources(db) -> list[tuple[str, str, str]]:
     """(category, source_name, feed_url) 목록을 설정값에서 구성한다."""
     from . import settings_store
@@ -147,6 +196,15 @@ def _sync_news_locked(db, sources: list[tuple[str, str, str]], retention_days: i
                 models.NewsItem.category == category, models.NewsItem.is_demo.is_(True)
             ).delete(synchronize_session=False)
 
+        _dedupe_existing(db, category)
+
+        # 같은 사건을 여러 언론사가 제목 문구를 다르게 써서 보도해 여러 건씩
+        # 겹쳐 보이는 문제(구글 뉴스 RSS 특성) 방지용 - 카테고리 안에서 이미
+        # 같은 사건으로 판정되는 제목이 있으면 건너뛴다.
+        seen_tokens = [
+            _title_tokens(t)
+            for (t,) in db.query(models.NewsItem.title).filter(models.NewsItem.category == category).all()
+        ]
         for entry in fetched:
             existing = (
                 db.query(models.NewsItem)
@@ -155,6 +213,10 @@ def _sync_news_locked(db, sources: list[tuple[str, str, str]], retention_days: i
             )
             if existing:
                 continue
+            tokens = _title_tokens(entry["title"])
+            if any(_is_same_story(tokens, seen) for seen in seen_tokens):
+                continue
+            seen_tokens.append(tokens)
             db.add(
                 models.NewsItem(
                     category=category,
