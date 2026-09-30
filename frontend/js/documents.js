@@ -91,18 +91,61 @@ function closeDocumentModal() {
   document.getElementById("documentModalOverlay").hidden = true;
 }
 
+// 체크된 사규 id들 - 일괄 삭제용. 표를 다시 그릴 때마다 초기화됨.
+let selectedDocumentIds = new Set();
+
+function updateDocumentsBulkToolbar() {
+  document.getElementById("documentsSelectedCount").textContent = `${selectedDocumentIds.size}건 선택됨`;
+  document.getElementById("documentsBulkDeleteBtn").disabled = selectedDocumentIds.size === 0;
+  const selectAll = document.getElementById("documentsSelectAllCheckbox");
+  if (selectAll) {
+    const total = document.querySelectorAll(".document-row-checkbox").length;
+    selectAll.checked = total > 0 && selectedDocumentIds.size === total;
+    selectAll.indeterminate = selectedDocumentIds.size > 0 && selectedDocumentIds.size < total;
+  }
+}
+
+async function deleteDocumentsBulk() {
+  if (selectedDocumentIds.size === 0) return;
+  const ids = Array.from(selectedDocumentIds);
+  if (!confirm(`선택한 사규 ${ids.length}건을 삭제할까요? (관련 매핑도 함께 삭제되며 되돌릴 수 없습니다)`)) return;
+  const btn = document.getElementById("documentsBulkDeleteBtn");
+  btn.disabled = true;
+  const results = await Promise.allSettled(ids.map((id) => api(`/api/documents/${id}`, { method: "DELETE" })));
+  const failed = results.filter((r) => r.status === "rejected").length;
+  if (failed) toast(`${ids.length - failed}건 삭제, ${failed}건 실패`, true);
+  else toast(`${ids.length}건을 삭제했습니다.`);
+  loadDocuments();
+  loadDashboard();
+}
+
 function renderDocumentsTable() {
   const el = document.getElementById("documentsTable");
+  selectedDocumentIds = new Set();
   if (!state.documents.length) {
     el.innerHTML = `<div class="empty">등록된 사규가 없습니다.</div>`;
+    updateDocumentsBulkToolbar();
+    return;
+  }
+  const searchText = document.getElementById("documentsSearchInput").value.trim().toLowerCase();
+  const documents = searchText
+    ? state.documents.filter((d) =>
+        [d.doc_type, d.doc_number, d.title, d.revision_no, d.owner, d.tags, ...d.mapped_laws]
+          .some((v) => (v || "").toLowerCase().includes(searchText))
+      )
+    : state.documents;
+  if (!documents.length) {
+    el.innerHTML = `<div class="empty">"${escapeHtml(searchText)}"와(과) 일치하는 사규가 없습니다.</div>`;
+    updateDocumentsBulkToolbar();
     return;
   }
   el.innerHTML = `
     <table>
-      <thead><tr><th>구분</th><th>문서번호</th><th>제목</th><th>개정번호</th><th>개정일자</th><th>담당자</th><th>키워드</th><th>근거 법령</th><th></th></tr></thead>
+      <thead><tr><th><input type="checkbox" id="documentsSelectAllCheckbox" title="전체 선택"></th><th>구분</th><th>문서번호</th><th>제목</th><th>개정번호</th><th>개정일자</th><th>담당자</th><th>키워드</th><th>근거 법령</th><th></th></tr></thead>
       <tbody>
-        ${state.documents.map((d) => `
+        ${documents.map((d) => `
           <tr>
+            <td><input type="checkbox" class="document-row-checkbox" data-document-id="${d.id}"></td>
             <td>${escapeHtml(d.doc_type)}</td>
             <td>${escapeHtml(d.doc_number || "-")}</td>
             <td>${escapeHtml(d.title)}</td>
@@ -120,6 +163,24 @@ function renderDocumentsTable() {
       </tbody>
     </table>
   `;
+  el.querySelectorAll(".document-row-checkbox").forEach((cb) => {
+    cb.addEventListener("change", () => {
+      const id = Number(cb.dataset.documentId);
+      if (cb.checked) selectedDocumentIds.add(id);
+      else selectedDocumentIds.delete(id);
+      updateDocumentsBulkToolbar();
+    });
+  });
+  document.getElementById("documentsSelectAllCheckbox").addEventListener("change", (ev) => {
+    el.querySelectorAll(".document-row-checkbox").forEach((cb) => {
+      cb.checked = ev.target.checked;
+      const id = Number(cb.dataset.documentId);
+      if (cb.checked) selectedDocumentIds.add(id);
+      else selectedDocumentIds.delete(id);
+    });
+    updateDocumentsBulkToolbar();
+  });
+  updateDocumentsBulkToolbar();
   el.querySelectorAll("[data-edit-doc]").forEach((btn) => {
     btn.addEventListener("click", () => startEditDocument(Number(btn.dataset.editDoc)));
   });
@@ -251,6 +312,8 @@ export function initDocumentForm() {
       closeDocumentModal();
     }
   });
+  document.getElementById("documentsSearchInput").addEventListener("input", renderDocumentsTable);
+  document.getElementById("documentsBulkDeleteBtn").addEventListener("click", deleteDocumentsBulk);
   document.getElementById("docLawCategoryFilter").addEventListener("change", renderDocLawCheckboxes);
   document.getElementById("docLawSearchInput").addEventListener("input", renderDocLawCheckboxes);
 }

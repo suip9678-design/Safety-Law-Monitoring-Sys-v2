@@ -313,6 +313,11 @@
           <button id="docAddBtn" class="btn btn-primary">+ 사규 추가</button>
         </div>
       </div>
+      <div class="row">
+        <input id="documentsSearchInput" type="text" placeholder="제목/문서번호/담당자/키워드/근거 법령으로 빠르게 찾기" style="flex: 1;" />
+        <span id="documentsSelectedCount" class="hint">0건 선택됨</span>
+        <button id="documentsBulkDeleteBtn" class="btn btn-danger" disabled>선택 항목 삭제</button>
+      </div>
       <div id="documentsTable" class="table-wrap"></div>
     </section>
 
@@ -329,6 +334,16 @@
           </select>
         </label>
         <input id="docRevisionsSearchInput" type="text" placeholder="법령명/사규명으로 빠르게 찾기" />
+      </div>
+      <div class="row">
+        <span id="docRevisionsSelectedCount" class="hint">0건 선택됨</span>
+        <select id="docRevisionsBulkStatus">
+          <option value="미검토">미검토</option>
+          <option value="검토중">검토중</option>
+          <option value="반영완료">반영완료</option>
+          <option value="해당없음">해당없음</option>
+        </select>
+        <button id="docRevisionsBulkApplyBtn" class="btn" disabled>선택 항목 일괄 변경</button>
       </div>
       <div id="docRevisionsTable" class="table-wrap"></div>
     </section>

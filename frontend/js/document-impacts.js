@@ -6,13 +6,18 @@ import { escapeHtml, fmtDate, statusSelect } from "./core.js";
 
 // 문서명/구분은 rowspan으로 그 문서의 개정 건수만큼 세로로 합쳐서, 법령/
 // 시행일/상태가 문서명/구분과 같은 표·같은 헤더 행에 나란히 놓이도록 한다.
-export function renderDocumentImpactsList(docImpacts) {
+// selectedIds를 넘기면(사규 개정 이력 탭) 행마다 체크박스를 붙인다. 같은
+// 개정 건이 여러 문서 아래 나올 수 있어도 상태는 개정 건 기준이라 체크박스는
+// 개정 id로 식별한다.
+export function renderDocumentImpactsList(docImpacts, selectedIds = null) {
+  const selectable = selectedIds !== null;
   return `
     <table>
-      <thead><tr><th>문서명</th><th>구분</th><th>법령</th><th>시행일</th><th>상태</th></tr></thead>
+      <thead><tr>${selectable ? `<th><input type="checkbox" id="docRevisionsSelectAllCheckbox" title="전체 선택"></th>` : ""}<th>문서명</th><th>구분</th><th>법령</th><th>시행일</th><th>상태</th></tr></thead>
       <tbody>
         ${docImpacts.map((d) => d.revisions.map((r, i) => `
           <tr>
+            ${selectable ? `<td><input type="checkbox" class="doc-revision-row-checkbox" data-revision-id="${r.id}" ${selectedIds.has(r.id) ? "checked" : ""}></td>` : ""}
             ${i === 0 ? `
               <td rowspan="${d.revisions.length}">${escapeHtml(d.document_title)}</td>
               <td rowspan="${d.revisions.length}">${escapeHtml(d.doc_type)}</td>
