@@ -16,9 +16,11 @@ from __future__ import annotations
 import datetime
 import email.utils
 import logging
+import math
 import re
 import threading
 import xml.etree.ElementTree as ET
+from collections import Counter
 
 import httpx
 from sqlalchemy import func
@@ -96,52 +98,73 @@ def fetch_feed(url: str) -> list[dict]:
     return items
 
 
-def _title_tokens(title: str) -> set[str]:
-    """구글 뉴스 RSS는 같은 사건을 여러 언론사가 각자 다른 문구의 제목으로
-    보도한다("실제 제목 - 언론사명" 형태로 언론사 접미사도 붙는다). 정확히
-    같은 문자열인지가 아니라 "같은 사건을 가리키는지"를 비교해야 하므로,
-    언론사 접미사를 뗀 제목을 어절 단위로 쪼갠 집합을 만든다 - 이 집합끼리
-    겹치는 정도(Jaccard 유사도)로 같은 사건 여부를 판단한다."""
-    core = title.rsplit(" - ", 1)[0] if " - " in title else title
-    return {tok for tok in re.split(r"[^0-9A-Za-z가-힣]+", core) if len(tok) > 1}
+# 같은 사건을 여러 언론사가 각자 다른 문구의 제목으로 보도하면(구글 뉴스 RSS
+# 특성) 글자 그대로는 안 맞아 한 페이지가 한두 사건으로 가득 찬다. 제목을 글자
+# 2개 단위(bigram)로 쪼개고, 전체 기사 중 드물게 나오는 조각(사건 고유 명사
+# 등)일수록 크게 쳐서(IDF) 코사인 유사도로 비교한다. 같은 사건은 며칠 안에
+# 몰려 보도되므로 발행 시각이 _DUP_WINDOW 안인 것끼리만 비교해, 문구가 비슷한
+# 정례 기사(지사별 추석 나눔 등)가 합쳐지는 걸 줄인다.
+# ponytail: 형태소 분석 없는 휴리스틱이라 드물게 다른 사건을 합치거나 같은
+# 사건을 놓칠 수 있다. 자주 눈에 띄면 _DUP_THRESHOLD를 조절하거나 형태소
+# 분석기 도입을 검토할 것(실제 기사 600여 건으로 0.35를 골랐다).
+_DUP_THRESHOLD = 0.35
+_DUP_WINDOW = datetime.timedelta(days=3)
+# 평소 동기화는 이 기간 안의 기사끼리만 다시 비교한다 - 그보다 오래된 건 이미
+# 이전 동기화에서 정리됐고, 매번 전부 비교하면 기사가 쌓일수록 느려진다.
+# 다만 서버를 켠 뒤 첫 동기화는 전부 비교한다(예전 버전이 남긴 오래된 중복
+# 정리용).
+_DUP_HORIZON = datetime.timedelta(days=14)
+_full_dedupe_done = False
 
 
-# ponytail: 형태소 분석 없이 어절 단위 Jaccard 유사도로 "같은 사건"을 근사
-# 판정하는 휴리스틱이다 - 조사가 안 떨어지거나 어순이 크게 다르면 놓칠 수
-# 있다. 오탐(서로 다른 사건을 합침)·누락(중복을 못 잡음)이 실제로 자주
-# 보이면 형태소 분석기 도입을 검토할 것.
-_SAME_STORY_THRESHOLD = 0.4
+def _bigrams(title: str) -> set[str]:
+    core = title.rsplit(" - ", 1)[0].lower()  # 끝의 " - 언론사명" 제거
+    return {tok[i : i + 2] for tok in re.split(r"[^0-9a-z가-힣]+", core) if len(tok) > 1 for i in range(len(tok) - 1)}
 
 
-def _is_same_story(a: set[str], b: set[str]) -> bool:
-    if not a or not b:
-        return False
-    union = a | b
-    return bool(union) and len(a & b) / len(union) >= _SAME_STORY_THRESHOLD
+def _naive_utc(dt: datetime.datetime | None) -> datetime.datetime:
+    if dt is None:
+        return datetime.datetime.utcnow()
+    return dt.astimezone(datetime.timezone.utc).replace(tzinfo=None) if dt.tzinfo else dt
 
 
-def _dedupe_existing(db, category: str) -> None:
-    """이미 저장된 항목 중 언론사만 다르게 같은 사건을 보도한 게 여러 건
-    있으면 가장 최근 것만 남기고 정리한다. 아래 삽입 시점 dedup을 넣기
-    전에 이미 여러 건씩 쌓여 있던 중복 건을 청소하기 위함. "보관" 처리해둔
-    항목은 사용자가 남기기로 한 것이므로 건드리지 않는다."""
-    order_col = func.coalesce(models.NewsItem.published_at, models.NewsItem.fetched_at)
-    rows = (
-        db.query(models.NewsItem.id, models.NewsItem.title)
-        .filter(models.NewsItem.category == category, models.NewsItem.is_archived.is_(False))
-        .order_by(order_col.desc())
-        .all()
-    )
-    kept_tokens: list[set[str]] = []
-    dup_ids: list[int] = []
-    for news_id, title in rows:
-        tokens = _title_tokens(title)
-        if any(_is_same_story(tokens, kept) for kept in kept_tokens):
-            dup_ids.append(news_id)
-        else:
-            kept_tokens.append(tokens)
-    if dup_ids:
-        db.query(models.NewsItem).filter(models.NewsItem.id.in_(dup_ids)).delete(synchronize_session=False)
+def _story_groups(items: list[tuple[str, datetime.datetime]]) -> list[list[int]]:
+    """(제목, 발행시각) 목록을 같은 사건끼리 묶어 인덱스 묶음으로 돌려준다.
+    A와 B, B와 C가 각각 같은 사건이면 A·B·C 모두 한 묶음이다(같은 사건이
+    "디에이치 클래스트"/"서초구 아파트"처럼 다른 표현으로 갈라져 보도되는 걸
+    잇기 위함)."""
+    n = len(items)
+    feats = [_bigrams(title) for title, _ in items]
+    df = Counter(b for f in feats for b in f)
+    vecs = []
+    for f in feats:
+        weights = {b: math.log((n + 1) / (df[b] + 1)) for b in f}
+        vecs.append((weights, sum(w * w for w in weights.values())))
+
+    parent = list(range(n))
+
+    def find(x: int) -> int:
+        while parent[x] != x:
+            parent[x] = parent[parent[x]]
+            x = parent[x]
+        return x
+
+    order = sorted(range(n), key=lambda i: items[i][1])
+    for a in range(n):
+        i = order[a]
+        wi, ni = vecs[i]
+        for b in range(a + 1, n):
+            j = order[b]
+            if items[j][1] - items[i][1] > _DUP_WINDOW:
+                break
+            wj, nj = vecs[j]
+            if ni and nj and sum(wi[k] ** 2 for k in wi.keys() & wj.keys()) / math.sqrt(ni * nj) >= _DUP_THRESHOLD:
+                parent[find(j)] = find(i)
+
+    groups: dict[int, list[int]] = {}
+    for i in range(n):
+        groups.setdefault(find(i), []).append(i)
+    return list(groups.values())
 
 
 def configured_sources(db) -> list[tuple[str, str, str]]:
@@ -185,7 +208,7 @@ def sync_news(db, sources: list[tuple[str, str, str]], retention_days: int) -> i
 
 
 def _sync_news_locked(db, sources: list[tuple[str, str, str]], retention_days: int) -> int:
-    added = 0
+    feeds = []
     for category, source_name, url in sources:
         fetched = fetch_feed(url)
         is_demo = not fetched
@@ -195,40 +218,57 @@ def _sync_news_locked(db, sources: list[tuple[str, str, str]], retention_days: i
             db.query(models.NewsItem).filter(
                 models.NewsItem.category == category, models.NewsItem.is_demo.is_(True)
             ).delete(synchronize_session=False)
+        feeds.append((category, source_name, fetched, is_demo))
 
-        _dedupe_existing(db, category)
-
-        # 같은 사건을 여러 언론사가 제목 문구를 다르게 써서 보도해 여러 건씩
-        # 겹쳐 보이는 문제(구글 뉴스 RSS 특성) 방지용 - 카테고리 안에서 이미
-        # 같은 사건으로 판정되는 제목이 있으면 건너뛴다.
-        seen_tokens = [
-            _title_tokens(t)
-            for (t,) in db.query(models.NewsItem.title).filter(models.NewsItem.category == category).all()
-        ]
+    # 이미 저장된 최근 기사와 이번에 받은 새 기사를 한꺼번에 같은 사건끼리
+    # 묶는다(카테고리 상관없이 - 같은 기사가 고용노동부/안전보건공단 검색에
+    # 동시에 잡히기도 한다). 묶음마다 한 건만 남기는데, 이미 저장된 게 있으면
+    # 그중 제일 먼저 나온 것(보관 처리한 건은 전부)을 남기고 새 기사는 버린다.
+    # 이미 쌓여 있던 중복은 이 과정에서 같이 정리된다.
+    global _full_dedupe_done
+    existing_keys = {(c, g) for c, g in db.query(models.NewsItem.category, models.NewsItem.guid)}
+    existing_q = db.query(models.NewsItem)
+    if _full_dedupe_done:
+        horizon = datetime.datetime.utcnow() - _DUP_HORIZON
+        existing_q = existing_q.filter(func.coalesce(models.NewsItem.published_at, models.NewsItem.fetched_at) >= horizon)
+    existing_rows = existing_q.all()
+    _full_dedupe_done = True
+    new_entries = []  # (category, source_name, entry, is_demo)
+    for category, source_name, fetched, is_demo in feeds:
         for entry in fetched:
-            existing = (
-                db.query(models.NewsItem)
-                .filter(models.NewsItem.category == category, models.NewsItem.guid == entry["guid"][:512])
-                .first()
-            )
-            if existing:
+            key = (category, entry["guid"][:512])
+            if key in existing_keys:
                 continue
-            tokens = _title_tokens(entry["title"])
-            if any(_is_same_story(tokens, seen) for seen in seen_tokens):
-                continue
-            seen_tokens.append(tokens)
-            db.add(
-                models.NewsItem(
-                    category=category,
-                    source_name=source_name,
-                    title=entry["title"][:512],
-                    link=entry["link"][:1024],
-                    guid=entry["guid"][:512],
-                    published_at=entry.get("published_at"),
-                    is_demo=is_demo,
-                )
+            existing_keys.add(key)
+            new_entries.append((category, source_name, entry, is_demo))
+
+    items = [(r.title, r.published_at or r.fetched_at) for r in existing_rows]
+    items += [(e["title"], _naive_utc(e.get("published_at"))) for _c, _s, e, _d in new_entries]
+    n_existing = len(existing_rows)
+
+    added = 0
+    delete_ids: list[int] = []
+    for group in _story_groups(items):
+        stored = [i for i in group if i < n_existing]
+        if stored:
+            keep = {i for i in stored if existing_rows[i].is_archived} or {min(stored, key=lambda i: items[i][1])}
+            delete_ids += [existing_rows[i].id for i in stored if i not in keep]
+            continue
+        category, source_name, entry, is_demo = new_entries[min(group, key=lambda i: items[i][1]) - n_existing]
+        db.add(
+            models.NewsItem(
+                category=category,
+                source_name=source_name,
+                title=entry["title"][:512],
+                link=entry["link"][:1024],
+                guid=entry["guid"][:512],
+                published_at=entry.get("published_at"),
+                is_demo=is_demo,
             )
-            added += 1
+        )
+        added += 1
+    if delete_ids:
+        db.query(models.NewsItem).filter(models.NewsItem.id.in_(delete_ids)).delete(synchronize_session=False)
     db.commit()
 
     # 발행일(published_at, 없으면 fetched_at) 기준으로 보관 기간이 지난
