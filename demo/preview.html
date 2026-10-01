@@ -482,7 +482,7 @@ const DEFAULT_ADMRUL_SET = [
 ];
 
 // ---------- local storage state ----------
-const STORAGE_KEY = "safety_law_demo_v1";
+const STORAGE_KEY = "safety_alert_demo_v1";
 
 function loadState() {
   try {
@@ -886,7 +886,7 @@ function renderDashboard() {
 
 // ---------- alarm bell ----------
 
-const ALARM_ACK_KEY = "safety_law_demo_alarm_ack_id";
+const ALARM_ACK_KEY = "safety_alert_demo_alarm_ack_id";
 
 function getAlarmAckId() {
   try { return Number(localStorage.getItem(ALARM_ACK_KEY) || 0); } catch (_) { return 0; }
@@ -908,7 +908,7 @@ function updateAlarmBell(unreviewedCount, recentRevisions) {
 
 // ---------- help modal ----------
 
-const HELP_SEEN_KEY = "safety_law_help_seen_v1_demo";
+const HELP_SEEN_KEY = "safety_alert_help_seen_v1_demo";
 
 function openHelpModal() {
   document.getElementById("helpModalOverlay").hidden = false;

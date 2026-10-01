@@ -1,8 +1,12 @@
 ; Safety Alert - Windows 설치 프로그램
 ;
-; 사용자 폴더(%LOCALAPPDATA%\Programs\SafetyLawMonitor) 안에 (내장된 파이썬
+; 사용자 폴더(%LOCALAPPDATA%\Programs\SafetyAlert) 안에 (내장된 파이썬
 ; 실행환경 + 앱 소스 + 미리 채워둔 법령 캐시 DB를) 설치하고, 바탕화면에는
 ; 실행용 exe 파일 하나만 남긴다.
+;
+; [이름 변경 전 버전에서 올라오는 경우]
+; 예전 이름(SafetyLawMonitor) 설치 폴더·레지스트리가 발견되면, 기존 프로그램 파일은
+; 제거하고 DB(safety_law_tracker.db -> safety_alert.db)와 설정(.env)은 새 설치 폴더로 옮긴다.
 ;
 ; [왜 Program Files가 아니라 사용자 폴더인가]
 ; 예전에는 C:\Program Files\SafetyLawMonitor에 설치했는데, 두 가지 문제가
@@ -11,7 +15,7 @@
 ;      없는 계정에서는 설치 자체가 막힌다.
 ;   2) 더 심각한 문제: Windows는 Program Files 폴더를 "일반 권한으로는 쓸
 ;      수 없는" 폴더로 보호한다. 그런데 이 프로그램은 법령 데이터를
-;      설치 폴더 안의 SQLite DB 파일(app\backend\safety_law_tracker.db)에
+;      설치 폴더 안의 SQLite DB 파일(app\backend\safety_alert.db)에
 ;      계속 기록한다. 설치는 관리자 권한으로 되더라도, 이후 바탕화면
 ;      아이콘을 더블클릭해 실행하는 프로그램은 일반 권한이라 DB에 쓰지
 ;      못하고 서버가 시작하다 죽는다.
@@ -31,7 +35,7 @@ Unicode true
 
 Name "Safety Alert"
 OutFile "build\SafetyAlert_Setup.exe"
-InstallDir "$LOCALAPPDATA\Programs\SafetyLawMonitor"
+InstallDir "$LOCALAPPDATA\Programs\SafetyAlert"
 ; user - 관리자 권한을 요구하지 않는다(설치할 때 "이 앱이 장치를 변경하도록
 ; 허용하시겠어요?" 창이 뜨지 않는다).
 RequestExecutionLevel user
@@ -48,8 +52,12 @@ SetCompressor /SOLID lzma
 !define OLD2_DESKTOP_EXE_NAME "안전보건 정보 모니터링.exe"
 !define OLD2_SHORTCUT_NAME "안전보건 정보 모니터링"
 ; 사용자 폴더 설치라 레지스트리도 HKLM(컴퓨터 전체)이 아니라 HKCU(이 사용자)에 쓴다.
-!define UNINSTALL_REG_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\SafetyLawMonitor"
-!define APP_REG_KEY "Software\SafetyLawMonitor"
+!define UNINSTALL_REG_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\SafetyAlert"
+!define APP_REG_KEY "Software\SafetyAlert"
+; 이름 변경 전(SafetyLawMonitor) 버전의 레지스트리 위치와 사용자 폴더 설치 위치.
+!define OLD_UNINSTALL_REG_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\SafetyLawMonitor"
+!define OLD_APP_REG_KEY "Software\SafetyLawMonitor"
+!define OLD_INSTALL_DIR "$LOCALAPPDATA\Programs\SafetyLawMonitor"
 ; 예전 버전이 관리자 권한으로 설치되던 고정 경로. 그 시절 설치 프로그램에는
 ; 경로를 고르는 화면이 없어서 항상 이 위치였다.
 !define LEGACY_INSTALL_DIR "$PROGRAMFILES64\SafetyLawMonitor"
@@ -90,6 +98,7 @@ SetCompressor /SOLID lzma
 !macroend
 
 Var PrevInstallDir    ; 이미 설치된 기존 버전의 설치 폴더(없으면 빈 문자열)
+Var PrevIsOldName     ; 기존 설치가 이름 변경 전(SafetyLawMonitor) 버전인지 "1"/""
 Var PrevIsLegacy      ; 기존 설치가 예전의 관리자 권한(Program Files) 설치인지 "1"/""
 Var ChoiceDialog
 Var RadioInstall
@@ -123,6 +132,7 @@ Page custom ChoicePageCreate ChoicePageLeave
 Function FindPreviousInstall
   StrCpy $PrevInstallDir ""
   StrCpy $PrevIsLegacy ""
+  StrCpy $PrevIsOldName ""
 
   ReadRegStr $0 HKCU "${APP_REG_KEY}" "InstallDir"
   ${If} $0 != ""
@@ -131,12 +141,24 @@ Function FindPreviousInstall
     Return
   ${EndIf}
 
+  ; 이름 변경 전(SafetyLawMonitor) 사용자 폴더 설치
+  ReadRegStr $0 HKCU "${OLD_APP_REG_KEY}" "InstallDir"
+  ${If} $0 == ""
+    StrCpy $0 "${OLD_INSTALL_DIR}"
+  ${EndIf}
+  ${If} ${FileExists} "$0\uninstall.exe"
+    StrCpy $PrevInstallDir $0
+    StrCpy $PrevIsOldName "1"
+    Return
+  ${EndIf}
+
   ; 예전(관리자 권한) 설치 흔적
-  ReadRegStr $0 HKLM "${UNINSTALL_REG_KEY}" "UninstallString"
+  ReadRegStr $0 HKLM "${OLD_UNINSTALL_REG_KEY}" "UninstallString"
   ${If} $0 != ""
   ${AndIf} ${FileExists} "${LEGACY_INSTALL_DIR}\uninstall.exe"
     StrCpy $PrevInstallDir "${LEGACY_INSTALL_DIR}"
     StrCpy $PrevIsLegacy "1"
+    StrCpy $PrevIsOldName "1"
   ${EndIf}
 FunctionEnd
 
@@ -205,6 +227,13 @@ Function ChoicePageLeave
     StrCpy $ChoiceAction "uninstall"
   ${EndIf}
 
+  ; 이름이 바뀌기 전 설치는 새 폴더(SafetyAlert)로 옮겨 설치하므로 "덮어쓰기"가 불가능하다.
+  ; 옛 프로그램 파일을 지우고(DB는 보존) 새로 설치한 뒤 DB를 옮긴다.
+  ${If} $PrevIsOldName == "1"
+  ${AndIf} $ChoiceAction == "install"
+    StrCpy $ChoiceAction "reinstall"
+  ${EndIf}
+
   ${If} $ChoiceAction == "uninstall"
     Call RemovePreviousInstall
     MessageBox MB_OK|MB_ICONINFORMATION "프로그램을 제거했습니다.$\r$\n$\r$\n그동안 모아둔 법령·고시 데이터(DB 파일)는 다음 위치에 그대로 남아 있습니다:$\r$\n$PrevInstallDir\app\backend$\r$\n$\r$\n필요 없으시면 이 폴더를 직접 삭제하셔도 됩니다."
@@ -214,6 +243,33 @@ Function ChoicePageLeave
   ${EndIf}
   ; "install"(삭제 없이 덮어쓰기)이면 아무것도 안 하고 바로 설치 페이지로 넘어간다.
 FunctionEnd
+
+; 이름 변경 전(SafetyLawMonitor) 설치 폴더에 남은 DB·설정을 새 설치 폴더로 옮긴다.
+; 새 DB(safety_alert.db)가 이미 있으면 덮어쓰지 않는다. 복사가 확인된 뒤에만 옛 파일을 지운다.
+!macro MigrateOldData OLDDIR
+  ${If} ${FileExists} "${OLDDIR}\app\backend\safety_law_tracker.db"
+  ${AndIfNot} ${FileExists} "$INSTDIR\app\backend\safety_alert.db"
+    CopyFiles /SILENT "${OLDDIR}\app\backend\safety_law_tracker.db" "$INSTDIR\app\backend\safety_alert.db"
+    ${If} ${FileExists} "${OLDDIR}\app\backend\safety_law_tracker.db-wal"
+      CopyFiles /SILENT "${OLDDIR}\app\backend\safety_law_tracker.db-wal" "$INSTDIR\app\backend\safety_alert.db-wal"
+    ${EndIf}
+    ${If} ${FileExists} "${OLDDIR}\app\backend\safety_law_tracker.db-shm"
+      CopyFiles /SILENT "${OLDDIR}\app\backend\safety_law_tracker.db-shm" "$INSTDIR\app\backend\safety_alert.db-shm"
+    ${EndIf}
+  ${EndIf}
+  ${If} ${FileExists} "${OLDDIR}\app\backend\.env"
+  ${AndIfNot} ${FileExists} "$INSTDIR\app\backend\.env"
+    CopyFiles /SILENT "${OLDDIR}\app\backend\.env" "$INSTDIR\app\backend\.env"
+  ${EndIf}
+  ; 옮겨진 것이 확인되면 옛 폴더를 정리한다(권한이 없어 못 지워도 설치는 계속 진행).
+  ${If} ${FileExists} "$INSTDIR\app\backend\safety_alert.db"
+  ${AndIf} ${FileExists} "${OLDDIR}\app\backend\safety_law_tracker.db"
+    Delete "${OLDDIR}\app\backend\safety_law_tracker.db*"
+    Delete "${OLDDIR}\app\backend\.env"
+    RMDir /r "${OLDDIR}\app"
+    RMDir "${OLDDIR}"
+  ${EndIf}
+!macroend
 
 ; ---------- 설치 ----------
 Section "Install"
@@ -230,12 +286,19 @@ Section "Install"
   SetOutPath "$INSTDIR\app"
   File /r /x "*.db" "build\payload\app\*.*"
 
+  ; 이름 변경 전 버전(SafetyLawMonitor)의 DB·설정을 새 폴더로 옮긴다(해당 없으면 아무 일도 안 한다).
+  ; 아래 초기 DB 복사보다 먼저 해야, 옮겨온 사용자 데이터가 초기 DB로 대체되지 않는다.
+  !insertmacro MigrateOldData "${OLD_INSTALL_DIR}"
+  !insertmacro MigrateOldData "${LEGACY_INSTALL_DIR}"
+  DeleteRegKey HKCU "${OLD_APP_REG_KEY}"
+  DeleteRegKey HKCU "${OLD_UNINSTALL_REG_KEY}"
+
   ; 설치 파일에 든 초기 DB는 이 PC에 DB가 아직 없을 때만 넣는다. 삭제/재설치
   ; 후에도 사용자가 모아둔 데이터가 남아 있으므로, 그걸 초기 DB로 덮어쓰면
   ; 등록한 법령·검토 이력이 재설치 순간 사라진다.
   SetOutPath "$INSTDIR\app\backend"
-  ${IfNot} ${FileExists} "$INSTDIR\app\backend\safety_law_tracker.db"
-    File /nonfatal "build\payload\app\backend\safety_law_tracker.db"
+  ${IfNot} ${FileExists} "$INSTDIR\app\backend\safety_alert.db"
+    File /nonfatal "build\payload\app\backend\safety_alert.db"
   ${EndIf}
 
   SetOutPath "$INSTDIR"

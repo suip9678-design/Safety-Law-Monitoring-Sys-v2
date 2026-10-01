@@ -24,7 +24,7 @@ from .routers import (
     sync,
 )
 
-logger = logging.getLogger("safety_law_tracker")
+logger = logging.getLogger("safety_alert")
 
 # 스케줄러가 KST(Asia/Seoul) 기준으로 도는데, run_date처럼 "지금부터 N초
 # 뒤"를 직접 계산해서 넘길 때 datetime.now()(naive, OS 시스템 시간대 기준)를

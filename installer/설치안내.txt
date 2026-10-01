@@ -36,7 +36,7 @@
    - 시작 메뉴(윈도우 키)에서 "Safety Alert"을 찾아 실행하세요.
      (설치할 때 시작 메뉴에도 같이 만들어집니다.)
    - 프로그램 본체는 아래 폴더에 설치됩니다.
-     C:\Users\사용자이름\AppData\Local\Programs\SafetyLawMonitor
+     C:\Users\사용자이름\AppData\Local\Programs\SafetyAlert
    - 설치 파일을 마우스 오른쪽 버튼의 "관리자 권한으로 실행"으로 켜지 마세요.
      다른 관리자 계정으로 실행하면 내 바탕화면이 아니라 그 계정의
      바탕화면에 만들어집니다. 그냥 더블클릭하세요.
@@ -121,7 +121,7 @@
 ----------------------------------------------------------
 
  - 설치 위치: 내 계정 폴더 안
-   (C:\Users\사용자이름\AppData\Local\Programs\SafetyLawMonitor)
+   (C:\Users\사용자이름\AppData\Local\Programs\SafetyAlert)
    관리자 권한이 필요 없어 회사 PC에서도 대부분 설치됩니다.
 
  - 이 프로그램은 내 컴퓨터 안에서만 동작합니다.

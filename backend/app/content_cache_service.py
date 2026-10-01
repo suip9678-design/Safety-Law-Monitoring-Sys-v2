@@ -17,7 +17,7 @@ from sqlalchemy.orm import Session
 from . import models
 from .law_api import LawApiError
 
-logger = logging.getLogger("safety_law_tracker")
+logger = logging.getLogger("safety_alert")
 
 
 def _upsert(

@@ -27,7 +27,7 @@ from sqlalchemy import func
 
 from . import fixtures, models
 
-logger = logging.getLogger("safety_law_tracker.news")
+logger = logging.getLogger("safety_alert.news")
 
 # 일부 뉴스 사이트는 브라우저가 아닌 요청(기본 User-Agent 없음)을 차단하므로
 # 일반적인 브라우저처럼 보이는 User-Agent를 붙인다.

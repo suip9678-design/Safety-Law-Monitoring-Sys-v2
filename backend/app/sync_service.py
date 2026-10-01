@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from . import models
 from .law_api import LawApiError
 
-logger = logging.getLogger("safety_law_tracker")
+logger = logging.getLogger("safety_alert")
 
 # scan_new_admrul()이 키워드 하나당 목록 조회를 몇 건씩/최대 몇 페이지까지
 # 훑을지. 2000페이지 * 100건 = 최대 20만 건/키워드(전체 법령 자동 캐시의

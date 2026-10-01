@@ -3,11 +3,11 @@
 # 순서대로 실행한다.
 #
 # 사용법:
-#   installer/build_installer.sh [--db <미리 캐시해둔 safety_law_tracker.db 경로>]
+#   installer/build_installer.sh [--db <미리 캐시해둔 safety_alert.db 경로>]
 #                                [--oc <국가법령정보센터 OC 키>] [--skip-fetch]
 #
 #   --db <path>     이미 "전체 법령 자동 캐시"를 한 번 돌려서 다 채워둔
-#                   safety_law_tracker.db 파일을 설치 파일 안에 포함시킨다.
+#                   safety_alert.db 파일을 설치 파일 안에 포함시킨다.
 #                   생략하면 빈 DB로 시작해서, 설치 후 첫 실행 때부터
 #                   캐시를 새로 받아야 한다(대기시간이 길어짐).
 #   --oc <key>      국가법령정보센터 OpenAPI의 OC 키를 설치 파일 안에 미리
@@ -75,7 +75,7 @@ bash "$INSTALLER_DIR/scripts/stage_app.sh" "$PAYLOAD_APP" "$LAW_API_OC"
 
 if [[ -n "$DB_PATH" ]]; then
   echo "  미리 캐시해둔 DB 포함: $DB_PATH"
-  cp "$DB_PATH" "$PAYLOAD_APP/backend/safety_law_tracker.db"
+  cp "$DB_PATH" "$PAYLOAD_APP/backend/safety_alert.db"
 fi
 
 echo "[4/6] 바탕화면 실행 파일 아이콘/버전 정보 리소스 준비"

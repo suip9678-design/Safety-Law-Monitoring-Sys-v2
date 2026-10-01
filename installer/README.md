@@ -2,7 +2,7 @@
 
 `SafetyAlert_Setup.exe`를 만드는 빌드 파이프라인입니다. 이 설치 파일을
 실행하면 사용자 PC의
-**`C:\Users\<사용자>\AppData\Local\Programs\SafetyLawMonitor\`** 안에
+**`C:\Users\<사용자>\AppData\Local\Programs\SafetyAlert\`** 안에
 파이썬 실행환경 + 앱 소스가 통째로 설치되고, **바탕화면에는 실행용 `.exe`
 파일 하나만** 남습니다(바로가기가 아니라 실제 실행 파일). 사용자 PC에
 파이썬이 설치되어 있지 않아도 바로 실행되고, **관리자 권한도 필요 없습니다**
@@ -13,7 +13,7 @@
 > 필요해 회사 PC에서는 설치가 막힐 수 있고, (2) 더 중요하게는 Windows가
 > `Program Files` 폴더를 쓰기 금지로 보호하기 때문에, 설치는 되더라도
 > 이후 일반 권한으로 실행되는 프로그램이 법령 데이터 DB
-> (`app\backend\safety_law_tracker.db`)에 기록을 못 해 서버가 시작하다
+> (`app\backend\safety_alert.db`)에 기록을 못 해 서버가 시작하다
 > 죽습니다. 사용자 폴더 설치로 두 문제를 모두 없앴습니다(VS Code, Zoom 등이
 > 쓰는 것과 같은 방식).
 
@@ -42,7 +42,7 @@
 ```bash
 installer/build_installer.sh                      # 빈 DB로 빌드 (설치 후 첫 실행부터 캐시를 새로 받음)
 installer/build_installer.sh --oc <OC키>           # 국가법령정보센터 OC 키를 미리 넣어서 빌드 (배포 시 권장)
-installer/build_installer.sh --db path/to/safety_law_tracker.db   # 미리 캐시해둔 DB를 포함해서 빌드
+installer/build_installer.sh --db path/to/safety_alert.db   # 미리 캐시해둔 DB를 포함해서 빌드
 installer/build_installer.sh --skip-fetch          # 파이썬/wheel을 다시 받지 않고 재빌드(반복 작업용)
 ```
 
@@ -55,10 +55,26 @@ installer/build_installer.sh --skip-fetch          # 파이썬/wheel을 다시 �
 
 설치 직후 첫 실행부터 바로 쓸 수 있게 하려면, 실제 OC 키로 동작하는
 환경에서 대시보드 > 설정 > **전체 법령 자동 캐시**의 "지금 바로 시작"을
-한 번 돌려 `backend/safety_law_tracker.db`를 완전히 채운 뒤, 그 파일
+한 번 돌려 `backend/safety_alert.db`를 완전히 채운 뒤, 그 파일
 경로를 `--db`로 넘겨서 빌드하세요. 이 DB가 설치 파일 안에 그대로 들어가
 설치 직후부터 캐시가 채워진 상태로 시작합니다(그 뒤로는 공포번호가 바뀐
 것만 증분으로 갱신되어 계속 빠릅니다).
+
+## 이름 변경 전(SafetyLawMonitor) 설치에서 올라오기
+
+프로그램 이름이 Safety Alert로 바뀌면서 설치 폴더(`...\Programs\SafetyAlert`), 레지스트리
+(`HKCU\Software\SafetyAlert`), DB 파일(`safety_alert.db`)도 새 이름을 씁니다. 옛 버전이 설치된 PC에서
+새 설치 파일을 실행하면 다음이 자동으로 진행됩니다.
+
+1. 옛 설치(`...\Programs\SafetyLawMonitor`, 더 오래된 `C:\Program Files\SafetyLawMonitor` 포함)를 찾아
+   프로그램 파일을 제거합니다(선택 화면에서 "설치"를 골라도 "재설치"로 처리).
+2. 옛 폴더의 `safety_law_tracker.db`(+`-wal`/`-shm`)와 `.env`를 새 폴더로 옮깁니다
+   (`safety_alert.db`로 이름 변경). 새 DB가 이미 있으면 덮어쓰지 않습니다.
+3. 복사가 확인되면 옛 폴더와 옛 레지스트리 항목을 정리합니다.
+
+설치 프로그램을 거치지 않고 소스로 실행(`run.bat`)하는 경우에도, 백엔드가 시작할 때
+`backend/safety_law_tracker.db`가 있고 새 DB가 없으면 자동으로 `safety_alert.db`로 이름을 바꿉니다.
+옛 `.env`의 `DATABASE_URL=...safety_law_tracker.db`도 새 이름으로 읽습니다.
 
 ## 필요한 도구
 
@@ -90,7 +106,7 @@ CPython 재배포판을 대신 사용합니다.)
    `build/payload/app`에 복사하고, 배포판 기본 `.env`
    (`FULL_LAW_CACHE_ENABLED=true`)를 만든다.
 4. `launcher/main.go` - 바탕화면 실행 파일. 실행되면 먼저 설치 폴더를
-   찾는다(실행 파일 옆 -> 설치 프로그램이 `HKCU\Software\SafetyLawMonitor`에
+   찾는다(실행 파일 옆 -> 설치 프로그램이 `HKCU\Software\SafetyAlert`에
    적어둔 경로 -> 기본 위치 -> 예전 `Program Files` 위치 순). 사용자 폴더
    경로에는 계정 이름이 들어가 PC마다 다르기 때문에, 예전처럼 경로를 실행
    파일에 박아둘 수 없어서다. 그 다음 서버가 떠 있는지
@@ -104,7 +120,7 @@ CPython 재배포판을 대신 사용합니다.)
    있으면(이름 붙은 뮤텍스로 확인) 트레이 아이콘을 새로 만들지 않고
    브라우저만 다시 연다.
 5. `setup.nsi` - 위 결과물들을
-   `%LOCALAPPDATA%\Programs\SafetyLawMonitor\`에 설치하고, 바탕화면에 실행
+   `%LOCALAPPDATA%\Programs\SafetyAlert\`에 설치하고, 바탕화면에 실행
    파일을 복사하는 NSIS 스크립트(`RequestExecutionLevel user` - 관리자 권한
    요청 창이 뜨지 않는다). 설치/제거 전에 실행 중인 프로그램을 먼저 종료시킨다
    (Windows는 실행 중인 파일을 지우거나 덮어쓰지 못해서, 이게 없으면 프로그램을
@@ -123,13 +139,14 @@ CPython 재배포판을 대신 사용합니다.)
 - fastapi/uvicorn/SQLAlchemy/APScheduler 등 모든 의존성이 정상 import
 - 실제 FastAPI 서버가 떠서 `/api/health`에 정상 응답
 - **설치 파일 실행 -> 사용자 폴더
-  (`C:\users\<사용자>\AppData\Local\Programs\SafetyLawMonitor`)에 설치되고,
+  (`C:\users\<사용자>\AppData\Local\Programs\SafetyAlert`)에 설치되고,
   바탕화면에 한글 이름의 실행 파일이 복사되며,
-  `HKCU\Software\SafetyLawMonitor\InstallDir`에 설치 경로가 기록되는 것까지 확인**
+  `HKCU\Software\SafetyAlert\InstallDir`에 설치 경로가 기록되는 것까지 확인**
 - **바탕화면 실행 파일을 실행하면 레지스트리로 설치 폴더를 찾아 서버를 띄우고,
   `/api/health`가 `{"status":"ok","demo_mode":false}`로 응답하며(=`--oc`로 넣은
   키가 실제로 먹는다는 뜻), 대시보드 HTML이 200으로 내려오는 것까지 확인**
-- **DB 파일(`app/backend/safety_law_tracker.db`)이 설치 폴더 안에 정상적으로
+- **(못 한 것) 이름 변경 전 설치에서의 DB 이전 흐름은 실제 Windows에서 검증하지 못했습니다.** 이 환경의 makensis가 비정상 종료해 컴파일도 확인하지 못했으니, 배포 전 옛 버전이 깔린 PC에서 한 번 시험해 주세요.
+- **DB 파일(`app/backend/safety_alert.db`)이 설치 폴더 안에 정상적으로
   생성되는 것 확인** - 예전 `Program Files` 설치에서는 이 쓰기가 권한 때문에
   막혔을 위치다
 - **프로그램이 켜진 상태에서 제거를 실행해도, 서버가 먼저 종료되고 파이썬

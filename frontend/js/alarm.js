@@ -5,10 +5,21 @@ import { state } from "./core.js";
 import { activateTab } from "./tabs.js";
 import { loadRevisions } from "./revisions.js";
 
-const ALARM_ACK_KEY = "safety_law_alarm_ack_id";
+const ALARM_ACK_KEY = "safety_alert_alarm_ack_id";
+const LEGACY_ALARM_ACK_KEY = "safety_law_alarm_ack_id"; // 이름 변경 전 키 - 읽기만 하고 새 키로 옮긴다
 
 function getAlarmAckId() {
-  try { return Number(localStorage.getItem(ALARM_ACK_KEY) || 0); } catch (_) { return 0; }
+  try {
+    let raw = localStorage.getItem(ALARM_ACK_KEY);
+    if (raw === null) {
+      raw = localStorage.getItem(LEGACY_ALARM_ACK_KEY);
+      if (raw !== null) {
+        localStorage.setItem(ALARM_ACK_KEY, raw);
+        localStorage.removeItem(LEGACY_ALARM_ACK_KEY);
+      }
+    }
+    return Number(raw || 0);
+  } catch (_) { return 0; }
 }
 
 function setAlarmAckId(id) {

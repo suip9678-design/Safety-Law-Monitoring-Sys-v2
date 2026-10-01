@@ -29,7 +29,7 @@ var iconBytes []byte
 
 // 설치 폴더 경로. 예전에는 상수(`C:\Program Files\SafetyLawMonitor`)로
 // 박아뒀지만, 지금은 관리자 권한 없이 설치할 수 있도록 사용자 폴더
-// (`%LOCALAPPDATA%\Programs\SafetyLawMonitor`)에 설치한다. 이 경로에는
+// (`%LOCALAPPDATA%\Programs\SafetyAlert`)에 설치한다. 이 경로에는
 // 윈도우 계정 이름이 들어가서 PC마다 달라지므로, 빌드 시점에 고정할 수
 // 없고 실행할 때마다 찾아내야 한다(resolveInstallDir 참고).
 //
@@ -40,7 +40,10 @@ var installDirOverride = ""
 var installDir string
 
 // 설치 프로그램(setup.nsi)이 설치 폴더 경로를 적어두는 레지스트리 위치.
-const registryKeyPath = `Software\SafetyLawMonitor`
+const registryKeyPath = `Software\SafetyAlert`
+
+// 이름 변경 전 버전의 레지스트리 위치/설치 폴더 - 아직 옮기기 전인 PC에서도 실행되도록 함께 찾아본다.
+const legacyRegistryKeyPath = `Software\SafetyLawMonitor`
 
 const (
 	serverHost = "127.0.0.1"
@@ -74,15 +77,17 @@ func hasRuntime(dir string) bool {
 // 설치 프로그램이 기록해둔 설치 경로를 레지스트리에서 읽는다. 사용자 폴더
 // 설치(HKCU)를 먼저 보고, 없으면 예전의 관리자 권한 설치(HKLM)도 본다.
 func installDirFromRegistry() string {
-	for _, root := range []registry.Key{registry.CURRENT_USER, registry.LOCAL_MACHINE} {
-		key, err := registry.OpenKey(root, registryKeyPath, registry.QUERY_VALUE)
-		if err != nil {
-			continue
-		}
-		value, _, err := key.GetStringValue("InstallDir")
-		key.Close()
-		if err == nil && hasRuntime(value) {
-			return value
+	for _, path := range []string{registryKeyPath, legacyRegistryKeyPath} {
+		for _, root := range []registry.Key{registry.CURRENT_USER, registry.LOCAL_MACHINE} {
+			key, err := registry.OpenKey(root, path, registry.QUERY_VALUE)
+			if err != nil {
+				continue
+			}
+			value, _, err := key.GetStringValue("InstallDir")
+			key.Close()
+			if err == nil && hasRuntime(value) {
+				return value
+			}
 		}
 	}
 	return ""
@@ -91,7 +96,7 @@ func installDirFromRegistry() string {
 // 설치 폴더를 찾는다. 바탕화면에 놓인 실행 파일은 설치 폴더 밖에 있어서,
 // 아래 순서대로 훑어본다.
 func resolveInstallDir() string {
-	defaultDir := filepath.Join(os.Getenv("LOCALAPPDATA"), "Programs", "SafetyLawMonitor")
+	defaultDir := filepath.Join(os.Getenv("LOCALAPPDATA"), "Programs", "SafetyAlert")
 
 	candidates := []string{
 		installDirOverride, // 1. 빌드 시 강제 지정한 경로(있다면)
@@ -101,9 +106,10 @@ func resolveInstallDir() string {
 		candidates = append(candidates, filepath.Dir(exePath))
 	}
 	candidates = append(candidates,
-		installDirFromRegistry(),            // 3. 설치 프로그램이 적어둔 경로
-		defaultDir,                          // 4. 기본 설치 위치
-		`C:\Program Files\SafetyLawMonitor`, // 5. 예전(관리자 권한) 설치 위치
+		installDirFromRegistry(), // 3. 설치 프로그램이 적어둔 경로
+		defaultDir,               // 4. 기본 설치 위치
+		filepath.Join(os.Getenv("LOCALAPPDATA"), "Programs", "SafetyLawMonitor"), // 5. 이름 변경 전 설치 위치
+		`C:\Program Files\SafetyLawMonitor`,                                      // 6. 예전(관리자 권한) 설치 위치
 	)
 
 	for _, dir := range candidates {
@@ -177,7 +183,7 @@ func showMessageBox(msg string, icon uintptr) {
 func acquireSingleInstance() bool {
 	kernel32 := syscall.NewLazyDLL("kernel32.dll")
 	createMutexW := kernel32.NewProc("CreateMutexW")
-	name, _ := syscall.UTF16PtrFromString(`Global\SafetyLawMonitorLauncherMutex`)
+	name, _ := syscall.UTF16PtrFromString(`Global\SafetyAlertLauncherMutex`)
 	ret, _, lastErr := createMutexW.Call(0, 0, uintptr(unsafe.Pointer(name)))
 	if ret == 0 {
 		// 뮤텍스 생성 자체가 실패한 경우(드묾) - 안전하게 "새 인스턴스"로 취급한다.

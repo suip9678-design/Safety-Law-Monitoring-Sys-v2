@@ -1,5 +1,5 @@
 ﻿# 설치 파일(SafetyAlert_Setup.exe)을 이 PC에서 한 번에 만든다.
-# 하는 일: (1) Go/NSIS/Python이 없으면 winget으로 설치 (2) backend\safety_law_tracker.db가 있으면
+# 하는 일: (1) Go/NSIS/Python이 없으면 winget으로 설치 (2) backend\safety_alert.db가 있으면
 # 법령 마스터를 뺀 배포용 DB를 만들어 포함(없으면 DB 없이 빌드) (3) installer/build_installer.sh 실행.
 # 사내 보안 프록시 때문에 필요한 우회(curl 인증서 해지 확인, pip 신뢰 호스트)는
 # 이번 실행에만 환경변수로 적용하고 PC 전역 설정은 건드리지 않는다.
@@ -73,7 +73,7 @@ if (-not $py) {
     if (-not $py) { throw "Python 설치 후에도 실행되는 python을 찾을 수 없습니다. 이 창을 닫고 다시 실행해보세요." }
 }
 
-$srcDb = Join-Path $root "backend\safety_law_tracker.db"
+$srcDb = Join-Path $root "backend\safety_alert.db"
 $distDb = Join-Path $build "dist.db"
 Remove-Item $distDb -ErrorAction SilentlyContinue
 $buildArgs = @("installer/build_installer.sh")
@@ -85,7 +85,7 @@ if (Test-Path $srcDb) {
     $buildArgs += @("--db", "installer/build/dist.db")
 }
 else {
-    Write-Host "[1/2] backend\safety_law_tracker.db 가 없어 DB를 포함하지 않고 만듭니다."
+    Write-Host "[1/2] backend\safety_alert.db 가 없어 DB를 포함하지 않고 만듭니다."
     Write-Host "  ※ 받는 사람은 빈 상태로 시작하며, 설정 화면에서 OC 키를 직접 입력해야 실제 법령 데이터로 동작합니다."
 }
 

@@ -7,6 +7,34 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env")
 
 
+DB_FILENAME = "safety_alert.db"
+LEGACY_DB_FILENAME = "safety_law_tracker.db"
+
+
+def _migrate_legacy_db() -> None:
+    """예전 이름(safety_law_tracker.db)의 SQLite DB를 새 이름으로 옮긴다.
+
+    새 DB 파일이 아직 없을 때만 옮기므로, 이미 새 이름으로 쓰고 있는 데이터는 건드리지 않는다.
+    SQLite 부속 파일(-wal, -shm, -journal)도 함께 옮긴다.
+    """
+    if not (BASE_DIR / LEGACY_DB_FILENAME).exists() or (BASE_DIR / DB_FILENAME).exists():
+        return
+    for suffix in ("", "-wal", "-shm", "-journal"):
+        src = BASE_DIR / (LEGACY_DB_FILENAME + suffix)
+        if src.exists():
+            src.replace(BASE_DIR / (DB_FILENAME + suffix))
+
+
+def _migrate_legacy_db_url(url: str) -> str:
+    # 옛 .env에 DATABASE_URL=sqlite:///./safety_law_tracker.db 가 남아 있어도 새 DB를 쓰도록 바꿔준다.
+    if url.startswith("sqlite") and url.endswith(LEGACY_DB_FILENAME):
+        return url[: -len(LEGACY_DB_FILENAME)] + DB_FILENAME
+    return url
+
+
+_migrate_legacy_db()
+
+
 def _bool(value: str | None, default: bool = False) -> bool:
     if value is None:
         return default
@@ -23,7 +51,9 @@ def _normalize_db_url(url: str) -> str:
 
 class Settings:
     DATABASE_URL: str = _normalize_db_url(
-        os.getenv("DATABASE_URL", f"sqlite:///{BASE_DIR / 'safety_law_tracker.db'}")
+        _migrate_legacy_db_url(
+            os.getenv("DATABASE_URL", f"sqlite:///{BASE_DIR / DB_FILENAME}")
+        )
     )
 
     LAW_API_OC: str = os.getenv("LAW_API_OC", "").strip()
