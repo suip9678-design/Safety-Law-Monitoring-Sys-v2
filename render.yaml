@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: safety-law-tracker
+    name: safety-alert
     runtime: python
     plan: free
     rootDir: backend
