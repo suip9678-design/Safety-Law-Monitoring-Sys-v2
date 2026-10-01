@@ -1,4 +1,4 @@
-; 안전보건 정보 모니터링 - Windows 설치 프로그램
+; Safety Alert - Windows 설치 프로그램
 ;
 ; 사용자 폴더(%LOCALAPPDATA%\Programs\SafetyLawMonitor) 안에 (내장된 파이썬
 ; 실행환경 + 앱 소스 + 미리 채워둔 법령 캐시 DB를) 설치하고, 바탕화면에는
@@ -29,22 +29,24 @@ Unicode true
 !include "nsDialogs.nsh"
 !include "LogicLib.nsh"
 
-Name "안전보건 정보 모니터링"
-OutFile "build\SafetyLawMonitor_Setup.exe"
+Name "Safety Alert"
+OutFile "build\SafetyAlert_Setup.exe"
 InstallDir "$LOCALAPPDATA\Programs\SafetyLawMonitor"
 ; user - 관리자 권한을 요구하지 않는다(설치할 때 "이 앱이 장치를 변경하도록
 ; 허용하시겠어요?" 창이 뜨지 않는다).
 RequestExecutionLevel user
 SetCompressor /SOLID lzma
 
-!define APP_NAME "안전보건 정보 모니터링"
-!define DESKTOP_EXE_NAME "안전보건 정보 모니터링.exe"
+!define APP_NAME "Safety Alert"
+!define DESKTOP_EXE_NAME "Safety Alert.exe"
 ; 시작 메뉴 바로가기 이름 - 바탕화면 아이콘을 지웠거나 못 찾을 때 다시 찾는 두 번째 통로.
-!define SHORTCUT_NAME "안전보건 정보 모니터링"
+!define SHORTCUT_NAME "Safety Alert"
 ; 이름을 바꾸기 전 버전이 만든 바탕화면 아이콘/시작 메뉴 바로가기 이름. 이미 설치된 PC에서
 ; 재설치·삭제할 때 옛 이름 아이콘이 남거나 옛 이름으로 실행 중인 프로그램이 파일을 붙잡지 않도록 함께 정리한다.
 !define OLD_DESKTOP_EXE_NAME "안전보건 법령 모니터링.exe"
 !define OLD_SHORTCUT_NAME "안전보건 법령 모니터링"
+!define OLD2_DESKTOP_EXE_NAME "안전보건 정보 모니터링.exe"
+!define OLD2_SHORTCUT_NAME "안전보건 정보 모니터링"
 ; 사용자 폴더 설치라 레지스트리도 HKLM(컴퓨터 전체)이 아니라 HKCU(이 사용자)에 쓴다.
 !define UNINSTALL_REG_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\SafetyLawMonitor"
 !define APP_REG_KEY "Software\SafetyLawMonitor"
@@ -65,6 +67,7 @@ SetCompressor /SOLID lzma
   nsExec::ExecToLog 'taskkill /F /T /IM "${DESKTOP_EXE_NAME}"'
   Pop $0
   nsExec::ExecToLog 'taskkill /F /T /IM "${OLD_DESKTOP_EXE_NAME}"'
+  nsExec::ExecToLog 'taskkill /F /T /IM "${OLD2_DESKTOP_EXE_NAME}"'
   Pop $0
   ; 바탕화면 실행 파일 이름으로 종료한 뒤 남은 것(설치 폴더의 launcher.exe
   ; 복사본, 런처보다 오래 살아남은 서버 pythonw.exe)을 정리한다. 실행 파일
@@ -73,7 +76,7 @@ SetCompressor /SOLID lzma
   ; 건드리지 않는다. uninstall.exe는 설치 폴더 안에서 실행될 수 있어(재설치가
   ; 부르는 `_?=` 방식) 자기 자신을 종료시키지 않도록 제외한다.
   ; 주의: 경로에 "SafetyLawMonitor"가 들어있는지로 고르면 안 된다 - 설치 파일 자신의
-  ; 이름(SafetyLawMonitor_Setup.exe)도 걸려서 설치 프로그램이 스스로를 종료해버린다
+  ; 이름(SafetyAlert_Setup.exe)도 걸려서 설치 프로그램이 스스로를 종료해버린다
   ; (실제로 발생: 설치 창이 뜬 직후 아무 안내 없이 꺼짐). 그래서 설치 폴더 경로로 고른다.
   ; 또한 경로는 Get-Process가 아니라 WMI(ExecutablePath)로 읽는다: 이 설치 프로그램은 32비트라
   ; 여기서 뜨는 powershell도 32비트인데, 32비트 PowerShell의 Get-Process는 64비트 프로세스
@@ -169,7 +172,7 @@ Function ChoicePageCreate
 
   !insertmacro MUI_HEADER_TEXT "이미 설치되어 있습니다" "어떻게 진행할지 선택해주세요."
 
-  ${NSD_CreateLabel} 0 0u 100% 24u "안전보건 정보 모니터링이(가) 이 컴퓨터에 이미 설치되어 있습니다.$\r$\n(설치 위치: $PrevInstallDir)"
+  ${NSD_CreateLabel} 0 0u 100% 24u "Safety Alert이(가) 이 컴퓨터에 이미 설치되어 있습니다.$\r$\n(설치 위치: $PrevInstallDir)"
   Pop $0
 
   ${NSD_CreateRadioButton} 10u 32u 100% 12u "설치 - 삭제 없이 기존 파일 위에 새 버전을 덮어씁니다"
@@ -249,7 +252,9 @@ Section "Install"
 
   ; 옛 이름의 아이콘/바로가기가 남아 있으면 지운다(새 이름으로 바꾼 뒤 재설치해도 아이콘이 둘이 되지 않게).
   Delete "$DESKTOP\${OLD_DESKTOP_EXE_NAME}"
+  Delete "$DESKTOP\${OLD2_DESKTOP_EXE_NAME}"
   Delete "$SMPROGRAMS\${OLD_SHORTCUT_NAME}.lnk"
+  Delete "$SMPROGRAMS\${OLD2_SHORTCUT_NAME}.lnk"
 
   ${IfNot} ${FileExists} "$DESKTOP\${DESKTOP_EXE_NAME}"
     IfSilent +2
@@ -286,7 +291,9 @@ Section "Uninstall"
   Delete "$DESKTOP\${DESKTOP_EXE_NAME}"
   Delete "$SMPROGRAMS\${SHORTCUT_NAME}.lnk"
   Delete "$DESKTOP\${OLD_DESKTOP_EXE_NAME}"
+  Delete "$DESKTOP\${OLD2_DESKTOP_EXE_NAME}"
   Delete "$SMPROGRAMS\${OLD_SHORTCUT_NAME}.lnk"
+  Delete "$SMPROGRAMS\${OLD2_SHORTCUT_NAME}.lnk"
   Delete "$INSTDIR\launcher.exe"
   Delete "$INSTDIR\server.log"
   Delete "$INSTDIR\uninstall.exe"
@@ -313,7 +320,7 @@ Section "Uninstall"
   ; 문의 대신 할 수 있는 것을 안내한다.
   IfSilent done_leftover_check
   ${If} ${FileExists} "$INSTDIR\python\pythonw.exe"
-    MessageBox MB_OK|MB_ICONEXCLAMATION "일부 파일이 사용 중이라 완전히 지우지 못했습니다.$\r$\n$\r$\n열려 있는 안전보건 프로그램 창을 모두 닫은 뒤, 설치 파일(SafetyLawMonitor_Setup.exe)을 다시 실행해 '삭제만 하기'를 한 번 더 눌러주세요."
+    MessageBox MB_OK|MB_ICONEXCLAMATION "일부 파일이 사용 중이라 완전히 지우지 못했습니다.$\r$\n$\r$\n열려 있는 안전보건 프로그램 창을 모두 닫은 뒤, 설치 파일(SafetyAlert_Setup.exe)을 다시 실행해 '삭제만 하기'를 한 번 더 눌러주세요."
   ${EndIf}
   done_leftover_check:
 SectionEnd

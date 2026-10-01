@@ -37,7 +37,7 @@ _KST = zoneinfo.ZoneInfo("Asia/Seoul")
 models.Base.metadata.create_all(bind=engine)
 ensure_columns()
 
-app = FastAPI(title="안전보건 정보 모니터링")
+app = FastAPI(title="Safety Alert")
 app.add_middleware(BasicAuthMiddleware)
 
 app.include_router(laws.router)

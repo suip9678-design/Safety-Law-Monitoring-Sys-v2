@@ -11,10 +11,10 @@
     "#1": {
       "0409": {
         "identity": {
-          "name": "SafetyLawMonitorLauncher",
+          "name": "SafetyAlertLauncher",
           "version": "1.0.0.0"
         },
-        "description": "안전보건 정보 모니터링 실행기",
+        "description": "Safety Alert 실행기",
         "minimum-os": "win7",
         "execution-level": "as invoker",
         "ui-access": false,
@@ -43,14 +43,14 @@
           "0409": {
             "Comments": "",
             "CompanyName": "",
-            "FileDescription": "안전보건 정보 모니터링",
+            "FileDescription": "Safety Alert",
             "FileVersion": "1.0.0.0",
-            "InternalName": "SafetyLawMonitorLauncher",
+            "InternalName": "SafetyAlertLauncher",
             "LegalCopyright": "",
             "LegalTrademarks": "",
-            "OriginalFilename": "SafetyLawMonitorLauncher.exe",
+            "OriginalFilename": "SafetyAlertLauncher.exe",
             "PrivateBuild": "",
-            "ProductName": "안전보건 정보 모니터링",
+            "ProductName": "Safety Alert",
             "ProductVersion": "1.0.0.0",
             "SpecialBuild": ""
           }

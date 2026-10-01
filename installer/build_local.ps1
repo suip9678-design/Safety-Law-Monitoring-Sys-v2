@@ -1,4 +1,4 @@
-﻿# 설치 파일(SafetyLawMonitor_Setup.exe)을 이 PC에서 한 번에 만든다.
+﻿# 설치 파일(SafetyAlert_Setup.exe)을 이 PC에서 한 번에 만든다.
 # 하는 일: (1) Go/NSIS/Python이 없으면 winget으로 설치 (2) backend\safety_law_tracker.db가 있으면
 # 법령 마스터를 뺀 배포용 DB를 만들어 포함(없으면 DB 없이 빌드) (3) installer/build_installer.sh 실행.
 # 사내 보안 프록시 때문에 필요한 우회(curl 인증서 해지 확인, pip 신뢰 호스트)는
@@ -102,6 +102,6 @@ if ($SkipFetch) { $buildArgs += "--skip-fetch" }
 & $bash @buildArgs
 if ($LASTEXITCODE -ne 0) { throw "빌드 실패 (위 로그 확인)" }
 
-$exe = Join-Path $build "SafetyLawMonitor_Setup.exe"
+$exe = Join-Path $build "SafetyAlert_Setup.exe"
 Write-Host ("`n완료: {0} ({1:N0} MB)" -f $exe, ((Get-Item $exe).Length / 1MB))
 explorer.exe $build

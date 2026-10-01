@@ -165,7 +165,7 @@ func openBrowser(url string) error {
 func showMessageBox(msg string, icon uintptr) {
 	user32 := syscall.NewLazyDLL("user32.dll")
 	messageBoxW := user32.NewProc("MessageBoxW")
-	title, _ := syscall.UTF16PtrFromString("안전보건 정보 모니터링")
+	title, _ := syscall.UTF16PtrFromString("Safety Alert")
 	text, _ := syscall.UTF16PtrFromString(msg)
 	messageBoxW.Call(0, uintptr(unsafe.Pointer(text)), uintptr(unsafe.Pointer(title)), icon)
 }
@@ -243,7 +243,7 @@ func main() {
 func onReady() {
 	systray.SetIcon(iconBytes)
 	systray.SetTitle("")
-	systray.SetTooltip("안전보건 정보 모니터링")
+	systray.SetTooltip("Safety Alert")
 
 	mOpen := systray.AddMenuItem("대시보드 열기", "브라우저에서 대시보드를 엽니다")
 	systray.AddSeparator()

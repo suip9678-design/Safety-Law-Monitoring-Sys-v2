@@ -1,6 +1,6 @@
-# 안전보건 정보 모니터링 v2
+# Safety Alert
 
-> 이름은 법령·고시 개정 추적에 더해 KOSHA 가이드, 안전보건 뉴스, 사규 개정 연계까지 아우르도록 예전의 "안전보건 법령·고시 Monitoring"에서 바꾼 것입니다.
+> 이름은 법령·고시 개정 추적에 더해 KOSHA 가이드, 안전보건 뉴스, 사규 개정 연계까지 아우르도록 예전의 "안전보건 법령·고시 Monitoring", "안전보건 정보 모니터링 v2"에서 **Safety Alert**로 바꾼 것입니다.
 
 회사가 보유한 안전보건 절차서/지침서/작업표준의 근거가 되는 대한민국 법령(법률·시행령·시행규칙)과
 행정규칙(고시·예규·훈령)의 개정 여부를 자동으로 추적하고, 어떤 회사 문서가 영향을 받는지 한눈에
@@ -121,7 +121,7 @@ PowerShell 창에서 직접 실행하고 싶다면 이렇게 해도 됩니다 (�
 먼저 실행해야 함 - 마찬가지로 그 창에만 적용되고 영구 변경은 아님):
 
 ```powershell
-cd "본인의 프로젝트 폴더 경로\Safety-Law-Monitoring-Sys"
+cd "본인의 프로젝트 폴더 경로\Safety-Alert-Sys-v2"
 Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 .\run.ps1
 ```

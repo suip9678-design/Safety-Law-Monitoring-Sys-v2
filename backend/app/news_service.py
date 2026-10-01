@@ -33,7 +33,7 @@ logger = logging.getLogger("safety_law_tracker.news")
 # 일반적인 브라우저처럼 보이는 User-Agent를 붙인다.
 _client = httpx.Client(
     timeout=10.0,
-    headers={"User-Agent": "Mozilla/5.0 (compatible; SafetyLawMonitoringSys/1.0; NewsBoard)"},
+    headers={"User-Agent": "Mozilla/5.0 (compatible; SafetyAlert/1.0; NewsBoard)"},
 )
 
 _ATOM_NS = "{http://www.w3.org/2005/Atom}"
